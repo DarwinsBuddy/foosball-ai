@@ -15,7 +15,7 @@ class Capture:
             self.cap = VideoStream(src=1).start()
         # otherwise, grab a reference to the video file
         else:
-            # #vs = FileVideoStream(args["video"]).start()
+            # #vs = FileVideoStream(args['file']).start()
             self.cap = cv2.VideoCapture(video)
             while not self.cap.isOpened():
                 cap = cv2.VideoCapture(video)
@@ -61,6 +61,12 @@ class Capture:
         # otherwise, release the camera
         else:
             self.cap.release()
+
+    def dim(self):
+        width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        return [width, height]
 
     def fps(self):
         return self.fps_cap.fps()

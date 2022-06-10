@@ -14,7 +14,14 @@ def destroy_all_windows():
     all_windows.clear()
 
 
-def show(name, frame, x=50, y=50):
+def show(name, frame, pos='tl'):
+    [x, y] = {
+        'tl': [0, 0],
+        'tr': [1280, 0],
+        'bl': [0, 800],
+        'br': [1280, 800]
+    }[pos]
+
     if name not in all_windows:
         cv2.namedWindow(name)
         cv2.moveWindow(name, x, y)

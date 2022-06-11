@@ -18,9 +18,10 @@ class Capture:
             # #vs = FileVideoStream(args['file']).start()
             self.cap = cv2.VideoCapture(video)
             while not self.cap.isOpened():
-                cap = cv2.VideoCapture(video)
+                self.cap = cv2.VideoCapture(video)
                 cv2.waitKey(1000)
                 print("Wait for the header")
+
         self.fps_cap = FPS().start()
         self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
         self.skipped_frames = 0

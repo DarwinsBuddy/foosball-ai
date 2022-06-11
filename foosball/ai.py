@@ -29,12 +29,23 @@ def get_ball_bounds_hsv():
     return [lower, upper]
 
 
+def get_goal_bounds_hsv():
+    lower = rgb2hsv((0, 0, 0))
+    upper = rgb2hsv((0, 0, 8))
+
+    return [lower, upper]
+
+
 def rgb2hsv(rgb):
     return cv2.cvtColor(np.uint8([[rgb]]), cv2.COLOR_RGB2HSV)[0][0]
 
 
 def hsv2rgb(hsv):
     return cv2.cvtColor(np.uint8([[hsv]]), cv2.COLOR_HSV2RGB)[0][0]
+
+
+def slider_label(rgb, bound):
+    return f"{rgb} ({bound})"
 
 
 def generate_bar_mask(cap):
@@ -67,51 +78,49 @@ def mask_img(image, mask):
 
 def add_calibration_input(window_name, lower_rgb, upper_rgb):
     # create trackbars for color change
-    cv2.createTrackbar('R (low)', window_name, lower_rgb[0], 255, lambda v: None)
-    cv2.createTrackbar('G (low)', window_name, lower_rgb[1], 255, lambda v: None)
-    cv2.createTrackbar('B (low)', window_name, lower_rgb[2], 255, lambda v: None)
-    cv2.createTrackbar('R (high)', window_name, upper_rgb[0], 255, lambda v: None)
-    cv2.createTrackbar('G (high)', window_name, upper_rgb[1], 255, lambda v: None)
-    cv2.createTrackbar('B (high)', window_name, upper_rgb[2], 255, lambda v: None)
+    cv2.createTrackbar(slider_label('R', 'low'), window_name, lower_rgb[0], 255, lambda v: None)
+    cv2.createTrackbar(slider_label('G', 'low'), window_name, lower_rgb[1], 255, lambda v: None)
+    cv2.createTrackbar(slider_label('B', 'low'), window_name, lower_rgb[2], 255, lambda v: None)
+    cv2.createTrackbar(slider_label('R', 'high'), window_name, upper_rgb[0], 255, lambda v: None)
+    cv2.createTrackbar(slider_label('G', 'high'), window_name, upper_rgb[1], 255, lambda v: None)
+    cv2.createTrackbar(slider_label('B', 'high'), window_name, upper_rgb[2], 255, lambda v: None)
     # cv2.createButton("Reset", reset_bounds, (window_name, lower_rgb, upper_rgb))
 
 
 def reset_bounds(window_name, lower_rgb, upper_rgb):
-    print("Reset color bounds")
-    cv2.setTrackbarPos('R (low)', window_name, lower_rgb[0])
-    cv2.setTrackbarPos('G (low)', window_name, lower_rgb[1])
-    cv2.setTrackbarPos('B (low)', window_name, lower_rgb[2])
+    print(f"Reset color bounds {window_name}")
+    cv2.setTrackbarPos(slider_label('R', 'low'), window_name, lower_rgb[0])
+    cv2.setTrackbarPos(slider_label('G', 'low'), window_name, lower_rgb[1])
+    cv2.setTrackbarPos(slider_label('B', 'low'), window_name, lower_rgb[2])
 
-    cv2.setTrackbarPos('R (high)', window_name, upper_rgb[0])
-    cv2.setTrackbarPos('G (high)', window_name, upper_rgb[1])
-    cv2.setTrackbarPos('B (high)', window_name, upper_rgb[2])
+    cv2.setTrackbarPos(slider_label('R', 'high'), window_name, upper_rgb[0])
+    cv2.setTrackbarPos(slider_label('G', 'high'), window_name, upper_rgb[1])
+    cv2.setTrackbarPos(slider_label('B', 'high'), window_name, upper_rgb[2])
 
 
 def get_slider_bounds(window_name):
     # get current positions of four trackbars
-    rl = cv2.getTrackbarPos('R (low)', window_name)
-    rh = cv2.getTrackbarPos('R (high)', window_name)
+    rl = cv2.getTrackbarPos(slider_label('R', 'low'), window_name)
+    rh = cv2.getTrackbarPos(slider_label('R', 'high'), window_name)
 
-    gl = cv2.getTrackbarPos('G (low)', window_name)
-    gh = cv2.getTrackbarPos('G (high)', window_name)
+    gl = cv2.getTrackbarPos(slider_label('G', 'low'), window_name)
+    gh = cv2.getTrackbarPos(slider_label('G', 'high'), window_name)
 
-    bl = cv2.getTrackbarPos('B (low)', window_name)
-    bh = cv2.getTrackbarPos('B (high)', window_name)
+    bl = cv2.getTrackbarPos(slider_label('B', 'low'), window_name)
+    bh = cv2.getTrackbarPos(slider_label('B', 'high'), window_name)
     lower = rgb2hsv((rl, gl, bl))
     upper = rgb2hsv((rh, gh, bh))
     return [lower, upper]
 
 
-def filter_ball(frame, lower, upper, verbose=False):
+def filter_color_range(frame, lower, upper, verbose=False):
     blurred = cv2.GaussianBlur(frame, (1, 1), 0)
     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
     # construct a mask for the color "green", then perform
     # a series of dilations and erosions to remove any small
     # blobs left in the simple frame
     simple = cv2.inRange(hsv, lower, upper)
-    # show("mask", mask, 100, 500)
     simple = cv2.erode(simple, None, iterations=2)
-    # show("erode", mask, 500, 500)
     simple = cv2.dilate(simple, None, iterations=2)
     if verbose:
         show("dilate", simple, 'bl')
@@ -136,7 +145,7 @@ def mark_ball(frame, center, bbox):
         cv2.circle(frame, center, 5, (0, 0, 255), -1)
 
 
-def detect_ball(img):
+def detect_largest_blob(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     cnts = cv2.findContours(gray.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -184,36 +193,49 @@ def render_info(frame, info):
 
 
 def process_video(args, cap):
-    # define the lower and upper boundaries of the "green"
+    # define the lower_ball and upper_ball boundaries of the "green"
     # ball in the HSV color space, then initialize the
     # list of tracked points
 
-    calibration_mode = args.get('calibration')
+    calibration_mode = args.get('calibration') is not None
+    goals_calibration = args.get('calibration') in ['all', 'goals']
+    ball_calibration = args.get('calibration') in ['all', 'ball']
     verbose = args.get('verbose')
     track = deque(maxlen=args["buffer"])
 
-    [lower, upper] = get_ball_bounds_hsv()
-    [init_lower, init_upper] = [hsv2rgb(lower), hsv2rgb(upper)]
+    [lower_ball, upper_ball] = get_ball_bounds_hsv()
+    [init_lower_ball, init_upper_ball] = [hsv2rgb(lower_ball), hsv2rgb(upper_ball)]
+
+    [lower_goal, upper_goal] = get_goal_bounds_hsv()
+    [init_lower_goal, init_upper_goal] = [hsv2rgb(lower_goal), hsv2rgb(upper_goal)]
 
     # init slider window
-    if calibration_mode:
-        cv2.namedWindow('img')
-        add_calibration_input('img', hsv2rgb(lower), hsv2rgb(upper))
+    if ball_calibration:
+        cv2.namedWindow('ball')
+        add_calibration_input('ball', hsv2rgb(lower_ball), hsv2rgb(upper_ball))
+    if goals_calibration:
+        cv2.namedWindow('goals')
+        add_calibration_input('goals', hsv2rgb(lower_goal), hsv2rgb(upper_goal))
 
     try:
         while True:
             frame = cap.next()
 
             frame = mask_img(frame, generate_frame_mask(cap))
-            if calibration_mode:
-                [lower, upper] = get_slider_bounds('img')
+            if ball_calibration:
+                [lower_ball, upper_ball] = get_slider_bounds('ball')
+            if goals_calibration:
+                [lower_goal, upper_goal] = get_slider_bounds('goals')
 
             if not args.get('off'):
-                img = filter_ball(frame, lower, upper, verbose)
-                if verbose or calibration_mode:
-                    show("img", img, 'br')
+                ball_frame = filter_color_range(frame, lower_ball, upper_ball, verbose)
+                goals_frame = filter_color_range(frame, lower_goal, upper_goal, verbose)
+                if verbose or ball_calibration:
+                    show("ball", ball_frame, 'br')
+                if verbose or goals_calibration:
+                    show("goals", cv2.cvtColor(goals_frame, cv2.COLOR_RGB2HSV), 'bl')
 
-                detected_ball = detect_ball(img)
+                detected_ball = detect_largest_blob(ball_frame)
 
                 if detected_ball is not None:
                     [center, bbox] = detected_ball
@@ -234,14 +256,17 @@ def process_video(args, cap):
                 ("AI", f"{'off' if args.get('off') else 'on'}")
             ]
 
-            if calibration_mode:
-                info.append(("Ball Lower RGB", f'{hsv2rgb(lower)}'))
-                info.append(("Ball Upper RGB", f'{hsv2rgb(upper)}'))
+            if goals_calibration:
+                info.append(("Goal Lower RGB", f'{hsv2rgb(lower_goal)}'))
+                info.append(("Goal Upper RGB", f'{hsv2rgb(upper_goal)}'))
+            if ball_calibration:
+                info.append(("Ball Lower RGB", f'{hsv2rgb(lower_ball)}'))
+                info.append(("Ball Upper RGB", f'{hsv2rgb(upper_ball)}'))
             render_info(frame, info)
 
             show("Frame", frame, 'tl')
 
-            if poll_key(calibration_mode, init_lower, init_upper):
+            if poll_key(calibration_mode, [['ball', init_lower_ball, init_upper_ball], ['goals', init_lower_goal, init_upper_goal]]):
                 break
     except EndOfStreamException:
         print("End of Stream")
@@ -249,18 +274,19 @@ def process_video(args, cap):
     destroy_all_windows()
 
 
-def poll_key(calibration_mode, init_lower, init_upper, interval=1):
-    return wait(calibration_mode, init_lower, init_upper, loop=False, interval=interval)
+def poll_key(calibration_mode, init_bounds, interval=1):
+    return wait(calibration_mode, init_bounds, loop=False, interval=interval)
 
 
-def wait(calibration_mode, init_lower, init_upper, loop=False, interval=100):
+def wait(calibration_mode, init_bounds, loop=False, interval=100):
     while True:
         key = cv2.waitKey(interval) & 0xFF
         # if the expected key is pressed, return
         if key == ord('q'):
             return True
         if key == ord('r') and calibration_mode:
-            reset_bounds('img', init_lower, init_upper)
+            for window_name, lower, upper in init_bounds:
+                reset_bounds(window_name, lower, upper)
             return False
 
         if not loop:

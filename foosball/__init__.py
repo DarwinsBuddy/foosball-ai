@@ -16,10 +16,10 @@ def destroy_all_windows():
 
 def show(name, frame, pos='tl'):
     [x, y] = {
-        'tl': [0, 0],
-        'tr': [1280, 0],
-        'bl': [0, 800],
-        'br': [1280, 800]
+        'tl': [10, 0],
+        'tr': [1310, 0],
+        'bl': [10, 900],
+        'br': [1310, 900]
     }[pos]
 
     if name not in all_windows:

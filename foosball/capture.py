@@ -40,7 +40,8 @@ class Capture:
 
         while not flag:
             self.check_eos()
-            print(f"Skipping frame")
+            if self.skipped_frames == 0:
+                print(f"Skipping frame(s)")
             self.skipped_frames += 1
             flag, frame = self.cap.read()
         if self.skipped_frames > 0:

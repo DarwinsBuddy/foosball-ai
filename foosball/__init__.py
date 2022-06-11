@@ -27,18 +27,3 @@ def show(name, frame, pos='tl'):
         cv2.moveWindow(name, x, y)
         all_windows.append(name)
     cv2.imshow(name, frame)
-
-
-def poll_key(expected="q", interval=1):
-    return wait(expected, loop=False, interval=interval)
-
-
-def wait(expected="q", loop=False, interval=100):
-    while True:
-        key = cv2.waitKey(interval) & 0xFF
-        # if the expected key is pressed, return
-        if key == ord(expected):
-            return True
-        if not loop:
-            break
-    return False

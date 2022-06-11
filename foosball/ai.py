@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 import imutils
 
-from . import destroy_all_windows, show, poll_key
+from . import destroy_all_windows, show
 from .capture import EndOfStreamException
 
 
@@ -65,38 +65,41 @@ def mask_img(image, mask):
     return cv2.bitwise_and(image, image, mask=mask)
 
 
-def add_slider(window_name, lower_rgb, upper_rgb):
+def add_calibration_input(window_name, lower_rgb, upper_rgb):
     # create trackbars for color change
-    cv2.createTrackbar('R-low', window_name, lower_rgb[0], 255, lambda v: None)
-    cv2.createTrackbar('R-high', window_name, upper_rgb[0], 255, lambda v: None)
+    cv2.createTrackbar('R (low)', window_name, lower_rgb[0], 255, lambda v: None)
+    cv2.createTrackbar('G (low)', window_name, lower_rgb[1], 255, lambda v: None)
+    cv2.createTrackbar('B (low)', window_name, lower_rgb[2], 255, lambda v: None)
+    cv2.createTrackbar('R (high)', window_name, upper_rgb[0], 255, lambda v: None)
+    cv2.createTrackbar('G (high)', window_name, upper_rgb[1], 255, lambda v: None)
+    cv2.createTrackbar('B (high)', window_name, upper_rgb[2], 255, lambda v: None)
+    # cv2.createButton("Reset", reset_bounds, (window_name, lower_rgb, upper_rgb))
 
-    cv2.createTrackbar('G-low', window_name, lower_rgb[1], 255, lambda v: None)
-    cv2.createTrackbar('G-high', window_name, upper_rgb[1], 255, lambda v: None)
 
-    cv2.createTrackbar('B-low', window_name, lower_rgb[2], 255, lambda v: None)
-    cv2.createTrackbar('B-high', window_name, upper_rgb[2], 255, lambda v: None)
+def reset_bounds(window_name, lower_rgb, upper_rgb):
+    print("Reset color bounds")
+    cv2.setTrackbarPos('R (low)', window_name, lower_rgb[0])
+    cv2.setTrackbarPos('G (low)', window_name, lower_rgb[1])
+    cv2.setTrackbarPos('B (low)', window_name, lower_rgb[2])
+
+    cv2.setTrackbarPos('R (high)', window_name, upper_rgb[0])
+    cv2.setTrackbarPos('G (high)', window_name, upper_rgb[1])
+    cv2.setTrackbarPos('B (high)', window_name, upper_rgb[2])
 
 
 def get_slider_bounds(window_name):
     # get current positions of four trackbars
-    rl = cv2.getTrackbarPos('R-low', window_name)
-    rh = cv2.getTrackbarPos('R-high', window_name)
+    rl = cv2.getTrackbarPos('R (low)', window_name)
+    rh = cv2.getTrackbarPos('R (high)', window_name)
 
-    gl = cv2.getTrackbarPos('G-low', window_name)
-    gh = cv2.getTrackbarPos('G-high', window_name)
+    gl = cv2.getTrackbarPos('G (low)', window_name)
+    gh = cv2.getTrackbarPos('G (high)', window_name)
 
-    bl = cv2.getTrackbarPos('B-low', window_name)
-    bh = cv2.getTrackbarPos('B-high', window_name)
+    bl = cv2.getTrackbarPos('B (low)', window_name)
+    bh = cv2.getTrackbarPos('B (high)', window_name)
     lower = rgb2hsv((rl, gl, bl))
     upper = rgb2hsv((rh, gh, bh))
     return [lower, upper]
-
-
-def render_bounds(img, lower, upper):
-    cv2.putText(img=img, text=f'Lower RGB={hsv2rgb(lower)}', org=(20, 20), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                fontScale=0.5, color=(0, 255, 0), thickness=1)
-    cv2.putText(img=img, text=f'Upper RGB={hsv2rgb(upper)}', org=(20, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                fontScale=0.5, color=(0, 255, 0), thickness=1)
 
 
 def filter_ball(frame, lower, upper, verbose=False):
@@ -164,15 +167,20 @@ def render_track(frame, track):
 
         # otherwise, compute the thickness of the line and
         # draw the connecting lines
+        r = 255 - (255 * (i / track.maxlen))
+        g = 255 * (i / track.maxlen)
+        b = 255 - (255 * (i / track.maxlen))
         thickness = int(np.sqrt(track.maxlen / float(i + 1)) * 2.5)
-        cv2.line(frame, track[i - 1], track[i], (0, 0, 255), thickness)
+        cv2.line(frame, track[i - 1], track[i], (r, g, b), thickness)
 
 
 def render_info(frame, info):
     # loop over the info tuples and draw them on our frame
     for (i, (k, v)) in enumerate(info):
         text = "{}: {}".format(k, v)
-        cv2.putText(frame, text, (10, 50 - ((i * 20) + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+        x = int(i / 2) * 300
+        y = (i % 2) * 20
+        cv2.putText(frame, text, (x, 40 + y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
 
 
 def process_video(args, cap):
@@ -185,51 +193,76 @@ def process_video(args, cap):
     track = deque(maxlen=args["buffer"])
 
     [lower, upper] = get_ball_bounds_hsv()
+    [init_lower, init_upper] = [hsv2rgb(lower), hsv2rgb(upper)]
 
     # init slider window
     if calibration_mode:
         cv2.namedWindow('img')
-        add_slider('img', hsv2rgb(lower), hsv2rgb(upper))
+        add_calibration_input('img', hsv2rgb(lower), hsv2rgb(upper))
 
     try:
         while True:
             frame = cap.next()
+
             frame = mask_img(frame, generate_frame_mask(cap))
             if calibration_mode:
                 [lower, upper] = get_slider_bounds('img')
 
-            img = filter_ball(frame, lower, upper, verbose)
-            if calibration_mode:
-                render_bounds(img, lower, upper)
-            if verbose:
-                show("img", img, 'br')
+            if not args.get('off'):
+                img = filter_ball(frame, lower, upper, verbose)
+                if verbose or calibration_mode:
+                    show("img", img, 'br')
 
-            detected_ball = detect_ball(img)
+                detected_ball = detect_ball(img)
 
-            if detected_ball is not None:
-                [center, bbox] = detected_ball
-                # update the points queue (track history)
-                track.appendleft(center)
-                mark_ball(frame, center, bbox)
-            else:
-                track.appendleft(None)
+                if detected_ball is not None:
+                    [center, bbox] = detected_ball
+                    # update the points queue (track history)
+                    track.appendleft(center)
+                    mark_ball(frame, center, bbox)
+                else:
+                    track.appendleft(None)
 
-            render_track(frame, track)
+                render_track(frame, track)
 
             # initialize the set of information we'll be displaying on
             # the frame
             info = [
                 ("FPS", f"{int(cap.fps())}"),
-                ("Track length", f"{sum([1 for p in track if p is not None])}")
+                ("Track length", f"{sum([1 for p in track if p is not None])}"),
+                ("Calibration", f"{'on' if args.get('calibration') else 'off'}"),
+                ("AI", f"{'off' if args.get('off') else 'on'}")
             ]
 
+            if calibration_mode:
+                info.append(("Ball Lower RGB", f'{hsv2rgb(lower)}'))
+                info.append(("Ball Upper RGB", f'{hsv2rgb(upper)}'))
             render_info(frame, info)
 
             show("Frame", frame, 'tl')
 
-            if poll_key():
+            if poll_key(calibration_mode, init_lower, init_upper):
                 break
     except EndOfStreamException:
         print("End of Stream")
 
     destroy_all_windows()
+
+
+def poll_key(calibration_mode, init_lower, init_upper, interval=1):
+    return wait(calibration_mode, init_lower, init_upper, loop=False, interval=interval)
+
+
+def wait(calibration_mode, init_lower, init_upper, loop=False, interval=100):
+    while True:
+        key = cv2.waitKey(interval) & 0xFF
+        # if the expected key is pressed, return
+        if key == ord('q'):
+            return True
+        if key == ord('r') and calibration_mode:
+            reset_bounds('img', init_lower, init_upper)
+            return False
+
+        if not loop:
+            break
+    return False

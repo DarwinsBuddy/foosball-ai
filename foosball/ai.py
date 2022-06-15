@@ -47,6 +47,7 @@ def process_video(args, cap):
         if poll_key(calibration_mode, tracker):
             break
 
+    cap.stop()
     destroy_all_windows()
 
 

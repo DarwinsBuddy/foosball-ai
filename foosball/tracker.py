@@ -92,7 +92,13 @@ class Tracker:
         bar_color = 255
         bg = 0
         mask = np.full((height, width), bg, np.uint8)
-        frame_mask = cv2.rectangle(mask, (100, 70), (1100, 620), bar_color, -1)
+        # TODO: instead of doing this approx. calculations
+        #       scale the whole stream down to a standardized size
+        #       and fix the frame according to dewarped image's recognized boundaries
+        #       don't forget to scale renderings accordingly (if original image is shown)
+        start = (int(width / 12), int(height / 20))
+        end = (int(width / 1.2), int(height / 1.2))
+        frame_mask = cv2.rectangle(mask, start, end, bar_color, -1)
         return frame_mask
 
     @staticmethod

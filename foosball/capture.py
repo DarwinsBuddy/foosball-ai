@@ -1,6 +1,7 @@
+import cv2
 from imutils.video import VideoStream, FPS
 
-from .FileVideoStream import FileVideoStream
+from vidgear.gears import VideoGear
 
 
 class Capture:
@@ -12,22 +13,33 @@ class Capture:
             self.cap = VideoStream(src=1).start()
         # otherwise, grab a reference to the video file
         else:
-            # #vs = FileVideoStream(args['file']).start()
-            self.cap = FileVideoStream(video).start()
+            # self.cap = FileVideoStream(video).start()
+            options = {
+                # "CAP_PROP_FRAME_WIDTH": 800,  # resolution 320x240
+                # "CAP_PROP_FRAME_HEIGHT": 600,
+                # "CAP_PROP_FPS": 60,  # framerate 60fps
+            }
+            self.cap = VideoGear(source=video, logging=False, **options).start()
 
         self.fps_cap = FPS().start()
         self.is_file_capture = video is not None
 
     def next(self):
-        self.fps_cap.update()
         self.fps_cap.stop()
+        self.fps_cap.update()
         return self.cap.read()
 
     def stop(self):
         self.cap.stop()
 
     def dim(self):
-        return self.cap.dim()
+        width = int(self.cap.stream.stream.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.cap.stream.stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    def fps(self):
+        return [width, height]
+
+    def fps_stream(self):
+        return self.cap.framerate
+
+    def fps_real(self):
         return self.fps_cap.fps()

@@ -7,10 +7,6 @@ from .tracker import Tracker
 
 
 def process_video(args, cap):
-    # define the lower_ball and upper_ball boundaries of the "green"
-    # ball in the HSV color space, then initialize the
-    # list of tracked points
-
     calibration_mode = args.get('calibration') is not None
     goals_calibration = args.get('calibration') in ['all', 'goals']
     ball_calibration = args.get('calibration') in ['all', 'ball']
@@ -29,7 +25,7 @@ def process_video(args, cap):
         info = [
             ("Calibration", f"{'on' if args.get('calibration') else 'off'}"),
             ("Tracker", f"{'off' if args.get('off') else 'on'}"),
-            ("FPS", f"{int(cap.fps())}")
+            ("FPS", f"{int(cap.fps_real())} / {int(cap.fps_stream())}")
         ]
 
         if not args.get('off'):
@@ -75,7 +71,7 @@ def poll_key(calibration_mode, tracker, interval=1):
     return wait(calibration_mode, tracker, loop=False, interval=interval)
 
 
-def wait(calibration_mode, tracker, loop=False, interval=100):
+def wait(calibration_mode, tracker, loop=False, interval=1):
     while True:
         key = cv2.waitKey(interval) & 0xFF
         # if the expected key is pressed, return

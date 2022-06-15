@@ -13,7 +13,9 @@ class Tracker:
     def __init__(self, frame_dimensions, ball_calibration=False, goals_calibration=False, verbose=False, track_buffer=64):
         self.ball_track = deque(maxlen=track_buffer)
         self.verbose = verbose
-
+        # define the lower_ball and upper_ball boundaries of the
+        # ball in the HSV color space, then initialize the
+        # list of tracked points
         [self.lower_ball, self.upper_ball] = self.get_ball_bounds_hsv()
         [self.init_lower_ball, self.init_upper_ball] = [self.hsv2rgb(self.lower_ball), self.hsv2rgb(self.upper_ball)]
 

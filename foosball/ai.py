@@ -6,7 +6,6 @@ import cv2
 import imutils
 
 from . import destroy_all_windows, show
-from .capture import EndOfStreamException
 
 
 def get_ball_bounds_hsv():
@@ -48,13 +47,12 @@ def slider_label(rgb, bound):
     return f"{rgb} ({bound})"
 
 
-def generate_bar_mask(cap):
+def generate_bar_mask(width, height):
     bar_positions = [250, 350, 450, 550]
 
     bar_width = 20
     bar_color = 0
     bg = 255
-    [width, height] = cap.dim()
     bar_mask = np.full((height, width), bg, np.uint8)
     for x_pos in bar_positions:
         [x, y] = [x_pos, 0]
@@ -63,10 +61,9 @@ def generate_bar_mask(cap):
     return bar_mask
 
 
-def generate_frame_mask(cap):
+def generate_frame_mask(width, height):
     bar_color = 255
     bg = 0
-    [width, height] = cap.dim()
     mask = np.full((height, width), bg, np.uint8)
     frame_mask = cv2.rectangle(mask, (100, 70), (1100, 620), bar_color, -1)
     return frame_mask
@@ -217,59 +214,60 @@ def process_video(args, cap):
         cv2.namedWindow('goals')
         add_calibration_input('goals', hsv2rgb(lower_goal), hsv2rgb(upper_goal))
 
-    try:
-        while True:
-            frame = cap.next()
+    [width, height] = cap.dim()
 
-            frame = mask_img(frame, generate_frame_mask(cap))
-            if ball_calibration:
-                [lower_ball, upper_ball] = get_slider_bounds('ball')
-            if goals_calibration:
-                [lower_goal, upper_goal] = get_slider_bounds('goals')
+    while True:
+        frame = cap.next()
+        if frame is None:
+            break
 
-            if not args.get('off'):
-                ball_frame = filter_color_range(frame, lower_ball, upper_ball, verbose)
-                goals_frame = filter_color_range(frame, lower_goal, upper_goal, verbose)
-                if verbose or ball_calibration:
-                    show("ball", ball_frame, 'br')
-                if verbose or goals_calibration:
-                    show("goals", cv2.cvtColor(goals_frame, cv2.COLOR_RGB2HSV), 'bl')
+        frame = mask_img(frame, generate_frame_mask(width, height))
+        if ball_calibration:
+            [lower_ball, upper_ball] = get_slider_bounds('ball')
+        if goals_calibration:
+            [lower_goal, upper_goal] = get_slider_bounds('goals')
 
-                detected_ball = detect_largest_blob(ball_frame)
+        if not args.get('off'):
+            ball_frame = filter_color_range(frame, lower_ball, upper_ball, verbose)
+            goals_frame = filter_color_range(frame, lower_goal, upper_goal, verbose)
+            if verbose or ball_calibration:
+                show("ball", ball_frame, 'br')
+            if verbose or goals_calibration:
+                show("goals", cv2.cvtColor(goals_frame, cv2.COLOR_RGB2HSV), 'bl')
 
-                if detected_ball is not None:
-                    [center, bbox] = detected_ball
-                    # update the points queue (track history)
-                    track.appendleft(center)
-                    mark_ball(frame, center, bbox)
-                else:
-                    track.appendleft(None)
+            detected_ball = detect_largest_blob(ball_frame)
 
-                render_track(frame, track)
+            if detected_ball is not None:
+                [center, bbox] = detected_ball
+                # update the points queue (track history)
+                track.appendleft(center)
+                mark_ball(frame, center, bbox)
+            else:
+                track.appendleft(None)
 
-            # initialize the set of information we'll be displaying on
-            # the frame
-            info = [
-                ("FPS", f"{int(cap.fps())}"),
-                ("Track length", f"{sum([1 for p in track if p is not None])}"),
-                ("Calibration", f"{'on' if args.get('calibration') else 'off'}"),
-                ("AI", f"{'off' if args.get('off') else 'on'}")
-            ]
+            render_track(frame, track)
 
-            if goals_calibration:
-                info.append(("Goal Lower RGB", f'{hsv2rgb(lower_goal)}'))
-                info.append(("Goal Upper RGB", f'{hsv2rgb(upper_goal)}'))
-            if ball_calibration:
-                info.append(("Ball Lower RGB", f'{hsv2rgb(lower_ball)}'))
-                info.append(("Ball Upper RGB", f'{hsv2rgb(upper_ball)}'))
-            render_info(frame, info)
+        # initialize the set of information we'll be displaying on
+        # the frame
+        info = [
+            ("FPS", f"{int(cap.fps())}"),
+            ("Track length", f"{sum([1 for p in track if p is not None])}"),
+            ("Calibration", f"{'on' if args.get('calibration') else 'off'}"),
+            ("AI", f"{'off' if args.get('off') else 'on'}")
+        ]
 
-            show("Frame", frame, 'tl')
+        if goals_calibration:
+            info.append(("Goal Lower RGB", f'{hsv2rgb(lower_goal)}'))
+            info.append(("Goal Upper RGB", f'{hsv2rgb(upper_goal)}'))
+        if ball_calibration:
+            info.append(("Ball Lower RGB", f'{hsv2rgb(lower_ball)}'))
+            info.append(("Ball Upper RGB", f'{hsv2rgb(upper_ball)}'))
+        render_info(frame, info)
 
-            if poll_key(calibration_mode, [['ball', init_lower_ball, init_upper_ball], ['goals', init_lower_goal, init_upper_goal]]):
-                break
-    except EndOfStreamException:
-        print("End of Stream")
+        show("Frame", frame, 'tl')
+
+        if poll_key(calibration_mode, [['ball', init_lower_ball, init_upper_ball], ['goals', init_lower_goal, init_upper_goal]]):
+            break
 
     destroy_all_windows()
 

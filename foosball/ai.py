@@ -2,8 +2,8 @@
 
 import cv2
 
-from . import destroy_all_windows, show
 from .tracker import Tracker
+from .utils import destroy_all_windows, show
 
 
 def process_video(args, cap):
@@ -13,7 +13,7 @@ def process_video(args, cap):
     verbose = args.get('verbose')
     frame_dimensions = cap.dim()
 
-    tracker = Tracker(frame_dimensions, ball_calibration, goals_calibration, verbose, args["buffer"])
+    tracker = Tracker(frame_dimensions, ball_calibration, goals_calibration, verbose, args.get("buffer"))
 
     while True:
         frame = cap.next()
@@ -71,7 +71,7 @@ def poll_key(calibration_mode, tracker, interval=1):
     return wait(calibration_mode, tracker, loop=False, interval=interval)
 
 
-def wait(calibration_mode, tracker, loop=False, interval=1):
+def wait(calibration_mode, tracker, loop=False, interval=0.1):
     while True:
         key = cv2.waitKey(interval) & 0xFF
         # if the expected key is pressed, return

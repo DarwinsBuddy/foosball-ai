@@ -1,7 +1,7 @@
 import argparse
 
 from foosball.ai import process_video
-from foosball.capture import Capture
+from foosball.filecapture import FileCapture
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-f", "--file", help="path to the (optional) video file")
@@ -14,6 +14,7 @@ args = vars(ap.parse_args())
 
 if __name__ == '__main__':
     if args.get('file'):
-        process_video(args, cap=Capture(args.get('file')))
+        # process_video(args, cap=Capture(args.get('file')))
+        process_video(args, cap=FileCapture(args.get('file')))
     else:
         print(ap.format_help())

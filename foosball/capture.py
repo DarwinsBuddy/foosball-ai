@@ -13,7 +13,6 @@ class Capture:
             self.cap = VideoStream(src=1).start()
         # otherwise, grab a reference to the video file
         else:
-            # self.cap = FileVideoStream(video).start()
             options = {
                 # "CAP_PROP_FRAME_WIDTH": 800,  # resolution 320x240
                 # "CAP_PROP_FRAME_HEIGHT": 600,

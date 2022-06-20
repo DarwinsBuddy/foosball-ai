@@ -25,7 +25,8 @@ def process_video(args, cap):
         info = [
             ("Calibration", f"{'on' if args.get('calibration') else 'off'}"),
             ("Tracker", f"{'off' if args.get('off') else 'on'}"),
-            ("FPS", f"{int(cap.fps_real())} / {int(cap.fps_stream())}")
+            # ("FPS", f"{int(cap.fps_real())} / {int(cap.fps_stream())}")
+            ("FPS", f"{int(cap.fps())}")
         ]
 
         if not args.get('off'):

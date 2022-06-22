@@ -1,21 +1,24 @@
 # TODO: #1 solve fps issue (we are not capturing high speed) maybe buffer it?
 
 import cv2
+from imutils.video import FPS
 
 from .tracker import Tracker
-from .utils import destroy_all_windows, show
 
 
-def process_video(args, cap):
+def process_video(args, cap, display):
     calibration_mode = args.get('calibration') is not None
     goals_calibration = args.get('calibration') in ['all', 'goals']
     ball_calibration = args.get('calibration') in ['all', 'ball']
     verbose = args.get('verbose')
     frame_dimensions = cap.dim()
 
-    tracker = Tracker(frame_dimensions, ball_calibration, goals_calibration, verbose, args.get("buffer"))
+    tracker = Tracker(frame_dimensions, display, ball_calibration, goals_calibration, verbose, args.get("buffer"))
+    fps = FPS()
 
+    fps.start()
     while True:
+        fps.update()
         frame = cap.next()
         if frame is None:
             break
@@ -24,9 +27,7 @@ def process_video(args, cap):
         # the frame
         info = [
             ("Calibration", f"{'on' if args.get('calibration') else 'off'}"),
-            ("Tracker", f"{'off' if args.get('off') else 'on'}"),
-            # ("FPS", f"{int(cap.fps_real())} / {int(cap.fps_stream())}")
-            ("FPS", f"{int(cap.fps())}")
+            ("Tracker", f"{'off' if args.get('off') else 'on'}")
         ]
 
         if not args.get('off'):
@@ -36,16 +37,32 @@ def process_video(args, cap):
                 [center, bbox] = detected_ball
                 mark_ball(frame, center, bbox)
             frame = tracker.render_track(frame, render_mask=True)
+        fps.stop()
+        current_fps = int(fps.fps())
+        info += [("FPS", f"{current_fps}")]
 
-        render_info(frame, info)
+        if not args.get("headless"):
+            render_info(frame, info)
+            # frame = scale(frame, 0.5)
+            display.show("Frame", frame, 'tl')
+        print(" - ".join([f"{label}: {text}" for label, text in info]) + (" " * 20), end="\r")
 
-        show("Frame", frame, 'tl')
-
-        if poll_key(calibration_mode, tracker):
+        if display.poll_key(calibration_mode, tracker):
             break
 
     cap.stop()
-    destroy_all_windows()
+    display.destroy_all_windows()
+
+
+def scale(src, scale_percent):
+
+    # calculate the 50 percent of original dimensions
+    width = int(src.shape[1] * scale_percent)
+    height = int(src.shape[0] * scale_percent)
+
+    # dsize
+    dsize = (width, height)
+    return cv2.resize(src, dsize)
 
 
 def render_info(frame, info):
@@ -66,22 +83,3 @@ def mark_ball(frame, center, bbox):
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
         # cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
         cv2.circle(frame, center, 5, (0, 0, 255), -1)
-
-
-def poll_key(calibration_mode, tracker, interval=1):
-    return wait(calibration_mode, tracker, loop=False, interval=interval)
-
-
-def wait(calibration_mode, tracker, loop=False, interval=0.1):
-    while True:
-        key = cv2.waitKey(interval) & 0xFF
-        # if the expected key is pressed, return
-        if key == ord('q'):
-            return True
-        if key == ord('r') and calibration_mode:
-            tracker.reset_bounds()
-            return False
-
-        if not loop:
-            break
-    return False

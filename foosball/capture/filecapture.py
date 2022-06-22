@@ -1,4 +1,4 @@
-from imutils.video import VideoStream, FPS
+from imutils.video import VideoStream
 
 from .FileVideoStream import FileVideoStream
 
@@ -15,12 +15,9 @@ class FileCapture:
             # #vs = FileVideoStream(args['file']).start()
             self.cap = FileVideoStream(video).start()
 
-        self.fps_cap = FPS().start()
         self.is_file_capture = video is not None
 
     def next(self):
-        self.fps_cap.update()
-        self.fps_cap.stop()
         return self.cap.read()
 
     def stop(self):
@@ -28,6 +25,3 @@ class FileCapture:
 
     def dim(self):
         return self.cap.dim()
-
-    def fps(self):
-        return self.fps_cap.fps()

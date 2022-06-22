@@ -5,13 +5,12 @@ import cv2
 import imutils
 import numpy as np
 
-from .utils import show
-
 
 class Tracker:
 
-    def __init__(self, frame_dimensions, ball_calibration=False, goals_calibration=False, verbose=False, track_buffer=64):
+    def __init__(self, frame_dimensions, display, ball_calibration=False, goals_calibration=False, verbose=False, track_buffer=64):
         self.ball_track = deque(maxlen=track_buffer)
+        self.display = display
         self.verbose = verbose
         # define the lower_ball and upper_ball boundaries of the
         # ball in the HSV color space, then initialize the
@@ -27,11 +26,11 @@ class Tracker:
         self.goals_calibration = goals_calibration
         # init slider window
         if self.ball_calibration:
-            cv2.namedWindow('ball')
+            #cv2.namedWindow('ball')
             self.init_bounds += [['ball', self.init_lower_ball, self.init_upper_ball]]
             self.add_calibration_input('ball', self.hsv2rgb(self.lower_ball), self.hsv2rgb(self.upper_ball))
         if self.goals_calibration:
-            cv2.namedWindow('goals')
+            #cv2.namedWindow('goals')
             self.init_bounds += [['goals', self.init_lower_goal, self.init_upper_goal]]
             self.add_calibration_input('goals', self.hsv2rgb(self.lower_goal), self.hsv2rgb(self.upper_goal))
 
@@ -142,8 +141,7 @@ class Tracker:
         upper = self.rgb2hsv((rh, gh, bh))
         return [lower, upper]
 
-    @staticmethod
-    def filter_color_range(frame, lower, upper, verbose=False):
+    def filter_color_range(self, frame, lower, upper, verbose=False):
         blurred = cv2.GaussianBlur(frame, (1, 1), 0)
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
         # construct a mask for the color "green", then perform
@@ -153,7 +151,7 @@ class Tracker:
         simple = cv2.erode(simple, None, iterations=2)
         simple = cv2.dilate(simple, None, iterations=2)
         if verbose:
-            show("dilate", simple, 'bl')
+            self.display.show("dilate", simple, 'bl')
 
         # ## for masking
         # cleaned = mask_img(simple, mask=bar_mask)
@@ -196,9 +194,9 @@ class Tracker:
         ball_frame = self.filter_color_range(frame, self.lower_ball, self.upper_ball, self.verbose)
         goals_frame = self.filter_color_range(frame, self.lower_goal, self.upper_goal, self.verbose)
         if self.verbose or self.ball_calibration:
-            show("ball", ball_frame, 'br')
+            self.display.show("ball", ball_frame, 'br')
         if self.verbose or self.goals_calibration:
-            show("goals", cv2.cvtColor(goals_frame, cv2.COLOR_RGB2HSV), 'bl')
+            self.display.show("goals", cv2.cvtColor(goals_frame, cv2.COLOR_RGB2HSV), 'bl')
 
         detected_ball = self.detect_largest_blob(ball_frame)
 

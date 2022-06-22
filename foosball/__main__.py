@@ -21,15 +21,16 @@ def usage_and_exit():
 if __name__ == '__main__':
     cap = None
     display = None
+    calibration_mode = args.get('calibration') is not None
     if args.get('file'):
         if args.get('display') == 'cv':
             from .display.cv import OpenCVDisplay
-            display = OpenCVDisplay()
+            display = OpenCVDisplay(calibration_mode)
         elif args.get('display') == 'gl':
-            # from .display.gl import OpenGLDisplay
-            # display = OpenGLDisplay()
             print("Not yet implemented")
             usage_and_exit()
+            from .display.gl import OpenGLDisplay
+            display = OpenGLDisplay(calibration_mode)
         else:
             usage_and_exit()
 
@@ -41,6 +42,6 @@ if __name__ == '__main__':
             cap = FileCapture(args.get('file'))
         else:
             usage_and_exit()
-        process_video(args, cap=cap, display=display)
+        process_video(args, calibration_mode=calibration_mode, cap=cap, display=display)
     else:
         usage_and_exit()

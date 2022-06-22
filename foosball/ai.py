@@ -6,14 +6,14 @@ from imutils.video import FPS
 from .tracker import Tracker
 
 
-def process_video(args, cap, display):
-    calibration_mode = args.get('calibration') is not None
+def process_video(args, calibration_mode, cap, display):
     goals_calibration = args.get('calibration') in ['all', 'goals']
     ball_calibration = args.get('calibration') in ['all', 'ball']
     verbose = args.get('verbose')
     frame_dimensions = cap.dim()
 
     tracker = Tracker(frame_dimensions, display, ball_calibration, goals_calibration, verbose, args.get("buffer"))
+    display.set_tracker(tracker)
     fps = FPS()
 
     fps.start()
@@ -47,11 +47,11 @@ def process_video(args, cap, display):
             display.show("Frame", frame, 'tl')
         print(" - ".join([f"{label}: {text}" for label, text in info]) + (" " * 20), end="\r")
 
-        if display.poll_key(calibration_mode, tracker):
+        if display.poll_key():
             break
 
     cap.stop()
-    display.destroy_all_windows()
+    display.stop()
 
 
 def scale(src, scale_percent):

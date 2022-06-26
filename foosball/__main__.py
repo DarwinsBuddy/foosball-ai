@@ -3,7 +3,7 @@ from .ai import process_video
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-f", "--file", help="path to the (optional) video file")
-ap.add_argument("-c", "--calibration", choices=['goals', 'ball', 'all'], help="Calibration mode")
+ap.add_argument("-c", "--calibration", choices=['ball', 'all'], help="Calibration mode")
 ap.add_argument("-v", "--verbose", action='store_true', help="Verbose")
 ap.add_argument("-o", "--off", action='store_true', help="Disable ai")
 ap.add_argument("-q", "--headless", action='store_true', help="Disable visualizations")
@@ -42,6 +42,6 @@ if __name__ == '__main__':
             cap = FileCapture(args.get('file'))
         else:
             usage_and_exit()
-        process_video(args, calibration_mode=calibration_mode, cap=cap, display=display)
+        process_video(args, cap=cap, display=display)
     else:
         usage_and_exit()

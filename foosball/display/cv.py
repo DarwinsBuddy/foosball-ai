@@ -31,7 +31,8 @@ class OpenCVDisplay:
             cv2.namedWindow(name)
             cv2.moveWindow(name, x, y)
             self.all_windows.append(name)
-        cv2.imshow(name, frame)
+        if frame is not None:
+            cv2.imshow(name, frame)
 
     def poll_key(self):
         return self._wait(loop=False, interval=1)
@@ -43,7 +44,7 @@ class OpenCVDisplay:
             if key == ord('q'):
                 return True
             if key == ord('r') and self.calibration_mode:
-                self.tracker.reset_bounds()
+                self.tracker.reset()
                 return False
 
             if not loop:

@@ -1,5 +1,7 @@
 import argparse
-from .ai import process_video
+import signal
+
+from .ai import AI
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-f", "--file", help="path to the (optional) video file")
@@ -42,6 +44,17 @@ if __name__ == '__main__':
             cap = FileCapture(args.get('file'))
         else:
             usage_and_exit()
-        process_video(args, cap=cap, display=display)
+
+        ai = AI(args, cap=cap, display=display)
+
+        def signal_handler(sig, frame):
+            print('\n\nExiting...')
+            ai.stop()
+
+        signal.signal(signal.SIGINT, signal_handler)
+        ai.process_video()
+
+
+
     else:
         usage_and_exit()

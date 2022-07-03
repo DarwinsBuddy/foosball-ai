@@ -9,22 +9,22 @@ from foosball.utils import rgb2hsv
 
 class Tracker:
 
-    def __init__(self, frame_dimensions, display, ball_calibration=False, verbose=False, track_buffer=64):
+    def __init__(self, frame_dimensions, ball_calibration=False, verbose=False, track_buffer=64):
         self.ball_track = deque(maxlen=track_buffer)
-        self.display = display
         self.verbose = verbose
         self.ball_calibration = ball_calibration
 
         self.ball_bounds_hsv = self.get_ball_bounds_hsv()
+        [self.init_lower_bounds_hsv, self.init_upper_bounds_hsv] = self.ball_bounds_hsv
         # define the lower_ball and upper_ball boundaries of the
         # ball in the HSV color space, then initialize the
-        self.ball_detection = ColorDetection('ball', display, self.ball_bounds_hsv, self.ball_calibration, self.verbose)
+        self.ball_detection = ColorDetection('ball', self.ball_bounds_hsv, self.ball_calibration, self.verbose)
 
         width, height = frame_dimensions
         self.frame_mask = self.generate_frame_mask(width, height)
 
     def reset(self):
-        self.ball_detection.reset_bounds()
+        self.ball_detection.reset_bounds(self.init_lower_bounds_hsv, self.init_upper_bounds_hsv)
 
     @staticmethod
     def get_ball_bounds_hsv():

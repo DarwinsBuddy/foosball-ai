@@ -3,6 +3,7 @@
 import cv2
 from imutils.video import FPS
 
+from .display.cv import reset_bounds
 from .tracker import Tracker
 
 
@@ -22,8 +23,11 @@ class AI:
         verbose = self.args.get('verbose')
         frame_dimensions = self.cap.dim()
 
-        tracker = Tracker(frame_dimensions, self.display, ball_calibration, verbose, self.args.get("buffer"))
-        self.display.set_tracker(tracker)
+        tracker = Tracker(frame_dimensions, ball_calibration, verbose, self.args.get("buffer"))
+
+        def reset_cb():
+            if ball_calibration:
+                tracker.reset()
         fps = FPS()
 
         fps.start()
@@ -53,17 +57,18 @@ class AI:
 
             if not self.args.get("headless"):
                 self.render_info(frame, info)
-                frame = self.scale(frame, 0.5)
-                self.display.show("Frame", frame, 'tl')
+                # frame = self.scale(frame, 0.5)
+                self.display.show(frame)
             print(" - ".join([f"{label}: {text}" for label, text in info]) + (" " * 20), end="\r")
 
-            if self.display.poll_key():
+            if self.display.render(reset_cb=reset_cb):
                 break
 
         self.cap.stop()
         self.display.stop()
 
-    def scale(self, src, scale_percent):
+    @staticmethod
+    def scale(src, scale_percent):
 
         # calculate the 50 percent of original dimensions
         width = int(src.shape[1] * scale_percent)

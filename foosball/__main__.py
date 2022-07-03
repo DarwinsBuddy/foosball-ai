@@ -1,6 +1,7 @@
 import argparse
 import signal
 
+from foosball.display.gear import StreamDisplay
 from .ai import AI
 
 ap = argparse.ArgumentParser()
@@ -10,8 +11,8 @@ ap.add_argument("-v", "--verbose", action='store_true', help="Verbose")
 ap.add_argument("-o", "--off", action='store_true', help="Disable ai")
 ap.add_argument("-q", "--headless", action='store_true', help="Disable visualizations")
 ap.add_argument("-b", "--buffer", type=int, default=64, help="max track buffer size")
-ap.add_argument("-cap", "--capture", choices=['vidgear', 'imutils'], default='vidgear', help="capture backend")
-ap.add_argument("-d", "--display", choices=['cv', 'gl'], default='cv', help="display backend")
+ap.add_argument("-cap", "--capture", choices=['gear', 'imutils'], default='gear', help="capture backend")
+ap.add_argument("-d", "--display", choices=['cv', 'gear'], default='cv', help="display backend")
 args = vars(ap.parse_args())
 
 
@@ -27,16 +28,15 @@ if __name__ == '__main__':
     if args.get('file'):
         if args.get('display') == 'cv':
             from .display.cv import OpenCVDisplay
-            display = OpenCVDisplay(calibration_mode)
-        elif args.get('display') == 'gl':
-            print("Not yet implemented")
-            usage_and_exit()
-            from .display.gl import OpenGLDisplay
-            display = OpenGLDisplay(calibration_mode)
+            display = OpenCVDisplay()
+        elif args.get('display') == 'gear':
+            print("[ALPHA] Feature - Streaming not fully supported")
+            from .display.cv import OpenCVDisplay
+            display = StreamDisplay()
         else:
             usage_and_exit()
 
-        if args.get('capture') == 'vidgear':
+        if args.get('capture') == 'gear':
             from .capture.gearcapture import GearCapture
             cap = GearCapture(args.get('file'))
         elif args.get('capture') == 'imutils':
@@ -53,8 +53,5 @@ if __name__ == '__main__':
 
         signal.signal(signal.SIGINT, signal_handler)
         ai.process_video()
-
-
-
     else:
         usage_and_exit()

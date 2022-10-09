@@ -1,3 +1,5 @@
+<img src="./diagram-export-10_9_2022%2C%205_07_28%20PM.png" alt="Architecture sketch" width="500"/>
+
 
 ## foosball-ai  
   

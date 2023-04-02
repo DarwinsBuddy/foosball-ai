@@ -2,10 +2,7 @@
 
 import cv2
 from imutils.video import FPS
-
-from .display.cv import reset_bounds
 from .tracker import Tracker
-
 
 class AI:
 

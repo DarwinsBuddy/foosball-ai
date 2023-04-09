@@ -1,0 +1,21 @@
+[run]
+concurrency = multiprocessing
+parallel = true
+sigterm = true
+source = foosball
+include = foosball/*
+omit = tests/*
+
+[report]
+show_missing = true
+exclude_lines =
+    # Have to re-enable the standard pragma
+    pragma: no cover
+
+    # Don't complain if tests don't hit defensive assertion code:
+    raise NotImplementedError
+[html]
+directory = coverage.html
+
+[xml]
+output = ./coverage.xml

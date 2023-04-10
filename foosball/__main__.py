@@ -2,7 +2,7 @@ import argparse
 import signal
 
 from foosball.display.gear import StreamDisplay
-from .ai import AI
+from .tracking.ai import AI
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-f", "--file", help="path to the (optional) video file")
@@ -13,7 +13,7 @@ ap.add_argument("-q", "--headless", action='store_true', help="Disable visualiza
 ap.add_argument("-b", "--buffer", type=int, default=64, help="max track buffer size")
 ap.add_argument("-cap", "--capture", choices=['gear', 'imutils'], default='gear', help="capture backend")
 ap.add_argument("-d", "--display", choices=['cv', 'gear'], default='cv', help="display backend")
-args = vars(ap.parse_args())
+kwargs = vars(ap.parse_args())
 
 
 def usage_and_exit():
@@ -23,29 +23,29 @@ def usage_and_exit():
 
 if __name__ == '__main__':
     cap = None
-    display = None
-    calibration_mode = args.get('calibration') is not None
-    if args.get('file'):
-        if args.get('display') == 'cv':
+    dis = None
+    calibration_mode = kwargs.get('calibration') is not None
+    if kwargs.get('file'):
+        if kwargs.get('display') == 'cv':
             from .display.cv import OpenCVDisplay
-            display = OpenCVDisplay()
-        elif args.get('display') == 'gear':
+            dis = OpenCVDisplay()
+        elif kwargs.get('display') == 'gear':
             print("[ALPHA] Feature - Streaming not fully supported")
             from .display.cv import OpenCVDisplay
-            display = StreamDisplay()
+            dis = StreamDisplay()
         else:
             usage_and_exit()
 
-        if args.get('capture') == 'gear':
+        if kwargs.get('capture') == 'gear':
             from .capture.gearcapture import GearCapture
-            cap = GearCapture(args.get('file'))
-        elif args.get('capture') == 'imutils':
+            cap = GearCapture(kwargs.get('file'))
+        elif kwargs.get('capture') == 'imutils':
             from .capture.filecapture import FileCapture
-            cap = FileCapture(args.get('file'))
+            cap = FileCapture(kwargs.get('file'))
         else:
             usage_and_exit()
-
-        ai = AI(args, cap=cap, display=display)
+        print(kwargs)
+        ai = AI(cap, dis, **kwargs)
 
         def signal_handler(sig, frame):
             print('\n\nExiting...')

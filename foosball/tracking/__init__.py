@@ -1,103 +1,68 @@
+import collections
 import logging
-import signal
-from abc import abstractmethod
-from multiprocessing import Process
 
-import pypeln.process as pl
-from pypeln.process.stage import Stage
+import pypeln as pl
+import cv2
+import numpy as np
 
-class Pipeline:
-    def __init__(self):
-        self.p = None
-        self.running = False
-        self.stopped = False
-        def signal_handler(sig, frame):
-            print('\n\nExiting...')
-            self.stop()
 
-        signal.signal(signal.SIGINT, signal_handler)
-        self.build()
 
-    def stop(self, timeout=5):
-        self._stop()
-        if self.p is not None:
-            logging.debug(f'Stopping {self.__class__.__name__}...')
-            self.p.join(timeout=timeout)
-            self.running = False
-            self.stopped = True
-            logging.debug(f'Stopped {self.__class__.__name__}')
-    def build(self, *args, **kwargs):
+DetectionResult = collections.namedtuple('DetectionResult', ['frame', 'rendered_frame', 'ball_track', 'ball', 'info'])
+FrameDimensions = collections.namedtuple('FrameDimensions', ['original', 'scaled', 'scale'])
 
-        if self.p is None:
-            logging.debug(f'Building {self.__class__.__name__}...')
-            self.p = Process(target=self._build, args=args, kwargs=kwargs)
-        else:
-            print('Pipeline already built')
-        return self.p
+from .render import Renderer
+from ..pipe import Pipeline
+from .tracker import Tracker
+def log(result: DetectionResult):
+    logging.debug(result.info)
 
-    def start(self):
-        if not self.running and not self.stopped:
-            logging.debug(f'Starting {self.__class__.__name__}...')
-            self.p.start()
-            self.running = True
-        elif self.running:
-            print(f'Cannot start {self.__class__.__name__} - call build() before invoking start()')
-        else:
-            print(f'Cannot start {self.__class__.__name__} twice')
+def dim(frame):
+    return [frame.shape[1], frame.shape[0]]
 
-    @abstractmethod
-    def _build(self, *args, **kwargs) -> Stage:
-        pass
+def generate_frame_mask(width, height):
+    bar_color = 255
+    bg = 0
+    mask = np.full((height, width), bg, np.uint8)
+    # TODO: instead of doing this approx. calculations
+    #       scale the whole stream down to a standardized size
+    #       and fix the frame according to dewarped image's recognized boundaries
+    #       don't forget to scale renderings accordingly (if original image is shown)
+    start = (int(width / 12), int(height / 20))
+    end = (int(width / 1.2), int(height / 1.2))
+    frame_mask = cv2.rectangle(mask, start, end, bar_color, -1)
+    return frame_mask
 
-    @abstractmethod
+class Tracking(Pipeline):
+
     def _stop(self):
-        pass
+        self.frame_queue.stop()
+        self.renderer.stop()
 
-    @staticmethod
-    def dev_null(*args, **kwargs):
-        return False
-
-    @staticmethod
-    def out(x):
-        try:
-            print(x)
-        except Exception as e:
-            logging.error(e)
-            return None
-
-class TestPipeline(Pipeline):
-    input = pl.IterableQueue()
-    # output = pl.IterableQueue()
-    def __init__(self):
+    def __init__(self, dims: FrameDimensions, ball_calibration=False, verbose=False, track_buffer=64, headless=False, off=False, **kwargs):
         super().__init__()
+        self.frame_queue        = pl.process.IterableQueue()
 
-    @staticmethod
-    def add1(x):
-        try:
-            return x + 1
-        except Exception as e:
-            logging.error(e)
-            return None
-    @staticmethod
-    def times2(x):
-        try:
-            return x * 2
-        except Exception as e:
-            logging.error(e)
-            return None
+        self.dims = dims
+        width, height = dims.scaled
+        mask = generate_frame_mask(width, height)
 
-    def _stop(self):
-        self.input.stop()
-        self.input.close()
+        self.tracker = Tracker(mask, off=off, track_buffer=track_buffer, verbose=verbose, ball_calibration=ball_calibration, **kwargs)
+        self.renderer = Renderer(dims, headless=headless, **kwargs)
+
+    def output(self):
+        return self.renderer.out
+    def reset(self):
+        self.tracker.reset()
+
     def _build(self):
-        pipe = (
-                self.input
-                | pl.map(self.add1, workers=1)
-                | pl.map(self.times2, workers=1)
-                | pl.map(self.out, workers=1)
-                | pl.filter(self.dev_null, workers=1)
-                | list
-                )
+        return (
+            self.frame_queue
+            | pl.process.map(self.tracker.track)
+            | pl.process.map(self.renderer.render)
+            # | pl.process.each(self.log)
+            | pl.thread.filter(lambda x: False)
+            | list
+        )
 
-        logging.debug(f"End of pipe: {pipe}")
-        return pipe
+    def track(self, frame):
+        self.frame_queue.put(frame)

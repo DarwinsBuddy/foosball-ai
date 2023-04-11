@@ -15,7 +15,6 @@ class Pipeline:
             self.stop()
 
         signal.signal(signal.SIGINT, signal_handler)
-        self.build()
 
     def stop(self, timeout=5):
         self._stop()
@@ -25,6 +24,7 @@ class Pipeline:
             self.running = False
             self.stopped = True
             logging.debug(f'Stopped {self.__class__.__name__}')
+
     def build(self, *args, **kwargs):
         if self.p is None:
             logging.debug(f'Building {self.__class__.__name__}...')
@@ -59,6 +59,7 @@ def dev_null():
 def out(x):
     try:
         print(x)
+        return x
     except Exception as e:
         logging.error(e)
         return None
@@ -81,45 +82,3 @@ def split(n: int, ctor):
             outs.append(o)
         return outs
     return _split
-
-
-class TestPipeline(Pipeline):
-    def _start(self):
-        pass
-
-    input = pl.process.IterableQueue()
-    def __init__(self):
-        super().__init__()
-
-    @staticmethod
-    def add(n):
-        def f(x):
-            try:
-                print("ADD ", n)
-                return x + n
-            except Exception as e:
-                logging.error(e)
-                return None
-        return f
-    @staticmethod
-    def times(mul: int):
-        def f(x):
-            try:
-                return x * mul
-            except Exception as e:
-                logging.error(e)
-                return None
-        return f
-
-    def _stop(self):
-        self.input.stop()
-        self.input.close()
-    def _build(self):
-        added =     pl.process.map(self.add(1), self.input)
-        times2 =    pl.process.map(self.times(-2), added, workers=1)
-        times3 =    pl.process.map(self.times(2), added, workers=1)
-        times =     pl.process.concat([times2, times3])
-        pipe = list(pl.thread.map(out, times))
-
-        logging.debug(f"End of pipe: {pipe}")
-        return pipe

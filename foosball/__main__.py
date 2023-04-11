@@ -1,7 +1,6 @@
 import argparse
 import signal
 
-from foosball.display.gear import StreamDisplay
 from .tracking.ai import AI
 
 ap = argparse.ArgumentParser()
@@ -31,7 +30,7 @@ if __name__ == '__main__':
             dis = OpenCVDisplay()
         elif kwargs.get('display') == 'gear':
             print("[ALPHA] Feature - Streaming not fully supported")
-            from .display.cv import OpenCVDisplay
+            from .display.gear import StreamDisplay
             dis = StreamDisplay()
         else:
             usage_and_exit()

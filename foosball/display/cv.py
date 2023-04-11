@@ -49,7 +49,7 @@ def wait(loop=False, interval=0.1, reset_cb=None):
         if not loop:
             break
     return False
-    
+
 
 def slider_label(rgb, bound):
     return f"{rgb} ({bound})"

@@ -5,11 +5,13 @@ from multiprocessing import Process
 
 import pypeln as pl
 
+
 class Pipeline:
     def __init__(self):
         self.p = None
         self.running = False
         self.stopped = False
+
         def signal_handler(sig, frame):
             print('\n\nExiting...')
             self.stop()
@@ -35,6 +37,7 @@ class Pipeline:
 
     def _start(self):
         pass
+
     def start(self):
         self._start()
         if not self.running and not self.stopped:
@@ -53,8 +56,10 @@ class Pipeline:
     def _stop(self):
         pass
 
+
 def dev_null():
     return pl.thread.filter(lambda: False)
+
 
 def out(x):
     try:
@@ -64,14 +69,18 @@ def out(x):
         logging.error(e)
         return None
 
+
 def tap(c: callable):
     def f(x):
         c(x)
         return x
+
     return f
+
 
 def tee(queue: pl.process.IterableQueue):
     return tap(lambda x: queue.put(x))
+
 
 def split(n: int, ctor):
     def _split(x):
@@ -81,4 +90,5 @@ def split(n: int, ctor):
             o.put(x)
             outs.append(o)
         return outs
+
     return _split

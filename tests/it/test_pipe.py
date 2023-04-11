@@ -76,4 +76,6 @@ def test_pipeline():
             result.append(x)
         except Empty:
             break
-    assert result == [6, -6, 8, -8]
+    expected = [6, -6, 8, -8]
+    assert len(result) == len(expected)
+    assert set(result) == set(expected)

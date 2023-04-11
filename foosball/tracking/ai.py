@@ -10,6 +10,7 @@ from ..display.cv import add_calibration_input, OpenCVDisplay, reset_bounds, get
 
 BALL = 'ball'
 
+
 class AI:
 
     def __init__(self, cap, dis, *args, **kwargs):
@@ -42,6 +43,7 @@ class AI:
         def reset_cb():
             if self.calibration:
                 reset_bounds(BALL, *self.ball_bounds_hsv)
+
         self.tracking.start()
 
         fps = FPS()
@@ -57,7 +59,8 @@ class AI:
                 try:
                     frame = self.tracking.output.get(block=False)
                     fps.stop()
-                    r_text(frame, f"FPS: {int(fps.fps())}", self.dims.scaled[0] - 60, self.dims.scaled[1] - 10, self.dims.scale)
+                    r_text(frame, f"FPS: {int(fps.fps())}", self.dims.scaled[0] - 60, self.dims.scaled[1] - 10,
+                           self.dims.scale)
                 except Empty:
                     # logging.debug("No new frame")
                     pass
@@ -90,6 +93,7 @@ class AI:
     @staticmethod
     def scale(src, dim):
         return cv2.resize(src, dim)
+
     @staticmethod
     def scale_dim(dim, scale_percent):
 
@@ -107,5 +111,3 @@ class AI:
 #
 #        dim = (width, height)
 #        return [cv2.resize(src, dim), dim]
-
-

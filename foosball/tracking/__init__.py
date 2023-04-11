@@ -1,4 +1,3 @@
-
 import pypeln as pl
 import cv2
 import numpy as np
@@ -9,8 +8,10 @@ from .render import Renderer
 from ..pipe import Pipeline
 from .tracker import Tracker, get_ball_bounds_hsv
 
+
 def dim(frame) -> [int, int]:
     return [frame.shape[1], frame.shape[0]]
+
 
 def generate_frame_mask(width, height) -> Mask:
     bar_color = 255
@@ -25,6 +26,7 @@ def generate_frame_mask(width, height) -> Mask:
     frame_mask = cv2.rectangle(mask, start, end, bar_color, -1)
     return frame_mask
 
+
 class Tracking(Pipeline):
 
     def _stop(self):
@@ -32,15 +34,17 @@ class Tracking(Pipeline):
         self.frame_queue.stop()
         self.renderer.stop()
 
-    def __init__(self, dims: FrameDimensions, calibration=False, verbose=False, track_buffer=64, headless=False, off=False, **kwargs):
+    def __init__(self, dims: FrameDimensions, calibration=False, verbose=False, track_buffer=64, headless=False,
+                 off=False, **kwargs):
         super().__init__()
-        self.frame_queue        = pl.process.IterableQueue()
+        self.frame_queue = pl.process.IterableQueue()
 
         self.dims = dims
         width, height = dims.scaled
         mask = generate_frame_mask(width, height)
 
-        self.tracker = Tracker(mask, ball_bounds_hsv=get_ball_bounds_hsv(), off=off, track_buffer=track_buffer, verbose=verbose, calibration=calibration, **kwargs)
+        self.tracker = Tracker(mask, ball_bounds_hsv=get_ball_bounds_hsv(), off=off, track_buffer=track_buffer,
+                               verbose=verbose, calibration=calibration, **kwargs)
         self.renderer = Renderer(dims, headless=headless, **kwargs)
         self.build()
 

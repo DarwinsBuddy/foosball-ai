@@ -42,6 +42,7 @@ class Tracking(Pipeline):
 
         self.tracker = Tracker(mask, ball_bounds_hsv=get_ball_bounds_hsv(), off=off, track_buffer=track_buffer, verbose=verbose, calibration=calibration, **kwargs)
         self.renderer = Renderer(dims, headless=headless, **kwargs)
+        self.build()
 
     @property
     def output(self) -> pl.process.IterableQueue:

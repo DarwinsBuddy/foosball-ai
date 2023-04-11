@@ -1,25 +1,18 @@
-import collections
-import logging
 
 import pypeln as pl
 import cv2
 import numpy as np
+from pypeln import BaseStage
 
-
-
-DetectionResult = collections.namedtuple('DetectionResult', ['frame', 'rendered_frame', 'ball_track', 'ball', 'info'])
-FrameDimensions = collections.namedtuple('FrameDimensions', ['original', 'scaled', 'scale'])
-
+from .models import Mask, FrameDimensions, Bounds
 from .render import Renderer
 from ..pipe import Pipeline
-from .tracker import Tracker
-def log(result: DetectionResult):
-    logging.debug(result.info)
+from .tracker import Tracker, get_ball_bounds_hsv
 
-def dim(frame):
+def dim(frame) -> [int, int]:
     return [frame.shape[1], frame.shape[0]]
 
-def generate_frame_mask(width, height):
+def generate_frame_mask(width, height) -> Mask:
     bar_color = 255
     bg = 0
     mask = np.full((height, width), bg, np.uint8)
@@ -35,10 +28,11 @@ def generate_frame_mask(width, height):
 class Tracking(Pipeline):
 
     def _stop(self):
+        self.tracker.stop()
         self.frame_queue.stop()
         self.renderer.stop()
 
-    def __init__(self, dims: FrameDimensions, ball_calibration=False, verbose=False, track_buffer=64, headless=False, off=False, **kwargs):
+    def __init__(self, dims: FrameDimensions, calibration=False, verbose=False, track_buffer=64, headless=False, off=False, **kwargs):
         super().__init__()
         self.frame_queue        = pl.process.IterableQueue()
 
@@ -46,15 +40,21 @@ class Tracking(Pipeline):
         width, height = dims.scaled
         mask = generate_frame_mask(width, height)
 
-        self.tracker = Tracker(mask, off=off, track_buffer=track_buffer, verbose=verbose, ball_calibration=ball_calibration, **kwargs)
+        self.tracker = Tracker(mask, ball_bounds_hsv=get_ball_bounds_hsv(), off=off, track_buffer=track_buffer, verbose=verbose, calibration=calibration, **kwargs)
         self.renderer = Renderer(dims, headless=headless, **kwargs)
 
-    def output(self):
+    @property
+    def output(self) -> pl.process.IterableQueue:
         return self.renderer.out
-    def reset(self):
-        self.tracker.reset()
 
-    def _build(self):
+    @property
+    def calibration_output(self) -> pl.process.IterableQueue:
+        return self.tracker.calibration_out
+
+    def bounds_input(self, bounds: Bounds) -> None:
+        return self.tracker.bounds_input(bounds)
+
+    def _build(self) -> BaseStage:
         return (
             self.frame_queue
             | pl.process.map(self.tracker.track)
@@ -64,5 +64,5 @@ class Tracking(Pipeline):
             | list
         )
 
-    def track(self, frame):
+    def track(self, frame) -> None:
         self.frame_queue.put(frame)

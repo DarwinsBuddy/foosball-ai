@@ -33,7 +33,7 @@ class OpenCVDisplay:
 
     @staticmethod
     def render(reset_cb=None):
-        return wait(loop=False, interval=1, reset_cb=None)
+        return wait(loop=False, interval=1, reset_cb=reset_cb)
 
 
 def wait(loop=False, interval=0.1, reset_cb=None):
@@ -56,6 +56,7 @@ def slider_label(rgb, bound):
 
 
 def add_calibration_input(name, lower_hsv, upper_hsv):
+    print("lower, upper ", lower_hsv, upper_hsv)
     lower_rgb = hsv2rgb(lower_hsv)
     upper_rgb = hsv2rgb(upper_hsv)
     # create trackbars for color change

@@ -8,8 +8,10 @@ from .colordetection import get_bounds, detect
 from .models import TrackResult, Mask, Track, Bounds, Frame, Info, Blob
 from ..utils import rgb2hsv, HSV, RGB
 
+
 def log(result: TrackResult) -> None:
     logging.debug(result.info)
+
 
 def get_ball_bounds_hsv() -> [RGB, RGB]:
     # TODO: #2 calibration for the demo footage (other ball => other values)
@@ -18,15 +20,18 @@ def get_ball_bounds_hsv() -> [RGB, RGB]:
 
     return [lower, upper]
 
+
 def get_goal_bounds_hsv() -> [HSV, HSV]:
     lower = rgb2hsv((0, 0, 0))
     upper = rgb2hsv((0, 0, 8))
 
     return [lower, upper]
 
+
 class Tracker:
 
-    def __init__(self, mask: Mask, ball_bounds_hsv: [HSV, HSV], off=False, track_buffer=64, verbose=False, calibration=False, **kwargs):
+    def __init__(self, mask: Mask, ball_bounds_hsv: [HSV, HSV], off=False, track_buffer=64, verbose=False,
+                 calibration=False, **kwargs):
         self.kwargs = kwargs
         self.mask = mask
         self.ball_track = Track(maxlen=track_buffer)
@@ -68,9 +73,11 @@ class Tracker:
             info.append(("Ball Lower RGB", f'{lower_rgb}'))
             info.append(("Ball Upper RGB", f'{upper_rgb}'))
         return info
+
     @property
     def calibration_output(self) -> pl.process.IterableQueue:
         return self.calibration_out
+
     def bounds_input(self, bounds: Bounds) -> None:
         if self.calibration:
             self.bounds_in.put_nowait(bounds)
@@ -89,7 +96,7 @@ class Tracker:
             detection_result = detect(masked, self.bounds.ball)
             ball = detection_result.blob
             if self.calibration:
-                    self.calibration_out.put_nowait(detection_result.frame)
+                self.calibration_out.put_nowait(detection_result.frame)
             ball_track = self.update_ball_track(ball)
         info = self.get_info(ball_track)
         return TrackResult(frame, masked, ball_track, ball, info)

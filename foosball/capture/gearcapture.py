@@ -33,4 +33,3 @@ class GearCapture:
         height = int(self.cap.stream.stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
         return [width, height]
-

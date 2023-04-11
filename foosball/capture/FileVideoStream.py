@@ -39,11 +39,11 @@ class FileVideoStream:
             if self.is_check_eos():
                 return None, None
             if self.skipped_frames == 0:
-                print(f"Skipping frame(s)")
+                print("Skipping frame(s)")
             self.skipped_frames += 1
             flag, frame = self.stream.read()
         if self.skipped_frames > 0:
-            print(f"Resuming video...")
+            print("Resuming video...")
             self.skipped_frames = 0
 
         return flag, frame

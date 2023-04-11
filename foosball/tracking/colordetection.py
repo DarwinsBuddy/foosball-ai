@@ -6,6 +6,7 @@ import imutils
 from .models import DetectionResult, Frame, Blob
 from ..utils import hsv2rgb
 
+
 def detect(frame, bounds_hsv, **kwargs) -> DetectionResult:
     if bounds_hsv is not None:
         detection_frame = filter_color_range(frame, bounds_hsv)
@@ -14,11 +15,13 @@ def detect(frame, bounds_hsv, **kwargs) -> DetectionResult:
     else:
         logging.error("ColorDetection not possible. bounds are None")
 
+
 def get_bounds(bounds_hsv, mode="hsv"):
     if mode == "hsv":
         return bounds_hsv
     else:
         return [hsv2rgb(x) for x in bounds_hsv]
+
 
 def filter_color_range(frame, bounds) -> Frame:
     [lower, upper] = bounds

@@ -9,6 +9,7 @@ from .models import TrackResult
 TEXT_SCALE = 0.8
 TEXT_COLOR = (0, 255, 0)
 
+
 def r_info(frame, dims: FrameDimensions, info) -> None:
     # loop over the info tuples and draw them on our frame
     for (i, (k, v)) in enumerate(info):
@@ -17,8 +18,11 @@ def r_info(frame, dims: FrameDimensions, info) -> None:
         y = dims.scaled[1] - ((i % 2) * 20)
         r_text(frame, txt, x + 10, y - int(TEXT_SCALE * 20), dims.scale)
 
+
 def r_text(frame, text: str, x: int, y: int, scale: float):
     cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale * TEXT_SCALE, TEXT_COLOR, 1)
+
+
 def r_ball(frame, b: Blob, scale) -> None:
     [x, y, w, h] = b.bbox
 
@@ -31,6 +35,8 @@ def r_ball(frame, b: Blob, scale) -> None:
         # cv2.circle(frame, center, 5, (0, 0, 255), -1)
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 1)
         # cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
+
+
 def r_track(frame, ball_track, scale) -> None:
     # loop over the set of tracked points
     for i in range(1, len(ball_track)):
@@ -46,6 +52,7 @@ def r_track(frame, ball_track, scale) -> None:
         b = 255 - (255 * (i / ball_track.maxlen))
         thickness = max(1, int(int(np.sqrt(ball_track.maxlen / float(i + 1)) * 2) * scale))
         cv2.line(frame, ball_track[i - 1], ball_track[i], (b, g, r), thickness)
+
 
 class Renderer:
     def __init__(self, dims: FrameDimensions, headless=False, **kwargs):
@@ -75,4 +82,5 @@ class Renderer:
             self.out.put_nowait(f)
         except Exception as e:
             print("Error in renderer ", e)
-        return TrackResult(detection_result.frame, f, detection_result.ball_track, detection_result.ball, detection_result.info)
+        return TrackResult(detection_result.frame, f, detection_result.ball_track, detection_result.ball,
+                           detection_result.info)

@@ -2,12 +2,14 @@ import cv2
 import pypeln as pl
 import numpy as np
 
-from . import FrameDimensions, DetectionResult
+from . import FrameDimensions
+from .colordetection import Blob
+from .models import TrackResult
 
 TEXT_SCALE = 0.8
 TEXT_COLOR = (0, 255, 0)
 
-def r_info(frame, dims: FrameDimensions, info):
+def r_info(frame, dims: FrameDimensions, info) -> None:
     # loop over the info tuples and draw them on our frame
     for (i, (k, v)) in enumerate(info):
         txt = "{}: {}".format(k, v)
@@ -17,9 +19,8 @@ def r_info(frame, dims: FrameDimensions, info):
 
 def r_text(frame, text: str, x: int, y: int, scale: float):
     cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale * TEXT_SCALE, TEXT_COLOR, 1)
-def r_ball(frame, b, scale):
-    [center, bbox] = b
-    [x, y, w, h] = bbox
+def r_ball(frame, b: Blob, scale) -> None:
+    [x, y, w, h] = b.bbox
 
     minimum = scale * 9
     maximum = scale * 33
@@ -30,7 +31,7 @@ def r_ball(frame, b, scale):
         # cv2.circle(frame, center, 5, (0, 0, 255), -1)
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 1)
         # cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
-def r_track(frame, ball_track, scale):
+def r_track(frame, ball_track, scale) -> None:
     # loop over the set of tracked points
     for i in range(1, len(ball_track)):
         # if either of the tracked points are None, ignore
@@ -53,11 +54,11 @@ class Renderer:
         self.kwargs = kwargs
         self.out = pl.process.IterableQueue()
 
-    def stop(self):
+    def stop(self) -> None:
         self.out.stop()
 
-    def render(self, detection_result: DetectionResult) -> DetectionResult:
-        f = detection_result.rendered_frame
+    def render(self, detection_result: TrackResult) -> TrackResult:
+        f = detection_result.rendered
         ball = detection_result.ball
         track = detection_result.ball_track
         info = detection_result.info
@@ -74,4 +75,4 @@ class Renderer:
             self.out.put_nowait(f)
         except Exception as e:
             print("Error in renderer ", e)
-        return DetectionResult(detection_result.frame, f, detection_result.ball_track, detection_result.ball, detection_result.info)
+        return TrackResult(detection_result.frame, f, detection_result.ball_track, detection_result.ball, detection_result.info)

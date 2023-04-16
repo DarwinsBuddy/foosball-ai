@@ -88,11 +88,10 @@ def draw_markers(img: Frame, arucos: list[Aruco], calib: Calibration=None) -> Fr
         if calib is not None:
             for a in arucos:
                 if a.rotation_vector is not None and a.translation_vector is not None:
-                    # TODO: check why this is not drawing anything
                     img = cv2.drawFrameAxes(img, calib.camera_matrix, calib.dist_coefficients,
                                              a.rotation_vector,
                                              a.translation_vector,
-                                             length=.02, thickness=3)
+                                             length=.005, thickness=1)
     return img
 
 def detect_markers(image, detector: cv2.aruco.ArucoDetector) -> list[Aruco]:
@@ -105,10 +104,13 @@ def detect_markers(image, detector: cv2.aruco.ArucoDetector) -> list[Aruco]:
     else:
         return []
 def estimate_markers_poses(arucos: list[Aruco], calib: Calibration):
-    for i in range(0, len(arucos)):
-        a = arucos[i]
-        # Estimate pose of each marker and return the values rotation_vector and translation_vector---(different from those of camera coefficients)
-        a.rotation_vector, a.translation_vector, marker_points = cv2.aruco.estimatePoseSingleMarkers(a.corners, 0.02, calib.camera_matrix, calib.dist_coefficients)
+    corners = np.array([a.corners for a in arucos])
+    # Estimate pose of each marker and return the values rotation_vector and translation_vector---(different from those of camera coefficients)
+    rotation_vectors, translation_vectors, marker_points = cv2.aruco.estimatePoseSingleMarkers(corners, 0.02, calib.camera_matrix, calib.dist_coefficients)
+    if rotation_vectors is not None and translation_vectors is not None:
+        for i in range(0, len(arucos)):
+            arucos[i].rotation_vector = np.array([rotation_vectors[i]])
+            arucos[i].translation_vector = np.array([translation_vectors[i]])
     return arucos
 
 def calibrate_camera(camera_id=None, calibration_images_path=None, headless=False, aruco_dictionary=cv2.aruco.DICT_4X4_1000, marker_length_cm=5.0, marker_separation_cm=1.0, aruco_params = cv2.aruco.DetectorParameters(), recording_time=5):
@@ -159,14 +161,14 @@ def calibrate_camera(camera_id=None, calibration_images_path=None, headless=Fals
             shape = img_gray.shape
             arucos = detect_markers(img_gray, detector)
             if not headless:
-                # TODO: cannot draw it so let's skip it
-                # arucos = estimate_markers_poses(arucos, calib)
+                arucos = estimate_markers_poses(arucos, calib)
                 img = draw_markers(img, arucos, calib)
             calib.add_image_markers(arucos)
             if not headless:
                 cv2.imshow("Calibration", img)
                 cv2.waitKey(1)
         calib.recalibrate(shape)
+        calib.store()
         print(calib.as_string)
     else:
         logging.error("Please specify calibration options. Neither image path nor camera_id specified")

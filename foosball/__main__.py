@@ -1,11 +1,22 @@
 import argparse
+import os
 import signal
 
+from foosball.arUcos.calibration import calibrate_camera
 from .tracking.ai import AI
+
+def dir_path(string):
+    if os.path.isdir(string):
+        return string
+    else:
+        raise NotADirectoryError(string)
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-f", "--file", help="path to the (optional) video file")
-ap.add_argument("-c", "--calibration", choices=['ball', 'all'], help="Calibration mode")
+ap.add_argument("-c",  "--calibration", action='store_true', help="Calibration mode")
+ap.add_argument("-ci", "--calibrationImagePath", type=dir_path, default=None, help="Image path for calibration mode. If not given switching to live calibration")
+ap.add_argument("-cam", "--cameraId", type=int, default=None, help="Camera id to be used")
+ap.add_argument("-cc", "--colorCalibration", choices=['ball', 'all'], help="Color calibration mode")
 ap.add_argument("-v", "--verbose", action='store_true', help="Verbose")
 ap.add_argument("-o", "--off", action='store_true', help="Disable ai")
 ap.add_argument("-q", "--headless", action='store_true', help="Disable visualizations")
@@ -23,7 +34,6 @@ def usage_and_exit():
 if __name__ == '__main__':
     cap = None
     dis = None
-    calibration_mode = kwargs.get('calibration') is not None
     if kwargs.get('file'):
         if kwargs.get('display') == 'cv':
             from .display.cv import OpenCVDisplay
@@ -46,11 +56,15 @@ if __name__ == '__main__':
         print(kwargs)
         ai = AI(cap, dis, **kwargs)
 
+
         def signal_handler(sig, frame):
             print('\n\nExiting...')
             ai.stop()
 
+
         signal.signal(signal.SIGINT, signal_handler)
         ai.process_video()
+    elif kwargs.get('calibration'):
+        calibrate_camera(camera_id=kwargs.get('cameraId'), calibration_images_path=kwargs.get('calibrationImagePath'))
     else:
         usage_and_exit()

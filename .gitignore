@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/calibration.yaml
+/camera_matrix.npy
+/dist_coeff.npy

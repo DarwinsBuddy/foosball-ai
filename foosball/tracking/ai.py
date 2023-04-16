@@ -18,7 +18,7 @@ class AI:
         self.kwargs = kwargs
         self.cap = cap
         self.display = dis
-        self.calibration = self.kwargs.get('calibration') in ['all', 'ball']
+        self.color_calibration = self.kwargs.get('colorCalibration') in ['all', 'ball']
         self.verbose = self.kwargs.get('verbose')
         self._stopped = False
         self.ball_bounds_hsv = get_ball_bounds_hsv()
@@ -31,7 +31,7 @@ class AI:
 
         self.tracking = Tracking(self.dims, **self.kwargs)
 
-        if self.calibration:
+        if self.color_calibration:
             self.calibration_display = OpenCVDisplay(BALL, pos='br')
             # init slider window
             add_calibration_input(BALL, *self.ball_bounds_hsv)
@@ -41,7 +41,7 @@ class AI:
 
     def process_video(self):
         def reset_cb():
-            if self.calibration:
+            if self.color_calibration:
                 reset_bounds(BALL, *self.ball_bounds_hsv)
 
         self.tracking.start()
@@ -73,12 +73,12 @@ class AI:
 
         self.cap.stop()
         self.display.stop()
-        if self.calibration:
+        if self.color_calibration:
             self.calibration_display.stop()
         self.tracking.stop()
 
     def render_calibration(self):
-        if self.calibration:
+        if self.color_calibration:
             try:
                 self.detection_frame = self.tracking.calibration_output.get_nowait()
                 self.calibration_display.show(self.detection_frame)
@@ -87,7 +87,7 @@ class AI:
 
     def adjust_calibration(self):
         # see if some sliders changed
-        if self.calibration:
+        if self.color_calibration:
             self.tracking.bounds_input(Bounds(ball=get_slider_bounds(BALL)))
 
     @staticmethod

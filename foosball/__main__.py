@@ -65,6 +65,6 @@ if __name__ == '__main__':
         signal.signal(signal.SIGINT, signal_handler)
         ai.process_video()
     elif kwargs.get('calibration'):
-        calibrate_camera(camera_id=kwargs.get('cameraId'), calibration_images_path=kwargs.get('calibrationImagePath'))
+        calibrate_camera(camera_id=kwargs.get('cameraId'), calibration_images_path=kwargs.get('calibrationImagePath'), headless=False)
     else:
         usage_and_exit()

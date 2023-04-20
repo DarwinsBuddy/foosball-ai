@@ -16,11 +16,11 @@ def r_info(frame, dims: FrameDimensions, info) -> None:
         txt = "{}: {}".format(k, v)
         x = (int(i / 2) * 100)
         y = dims.scaled[1] - ((i % 2) * 20)
-        r_text(frame, txt, x + 10, y - int(TEXT_SCALE * 20), dims.scale)
+        r_text(frame, txt, x + 10, y - int(TEXT_SCALE * 20), dims.scale, (0,255,0) if v != "off" else (100,100,100))
 
 
-def r_text(frame, text: str, x: int, y: int, scale: float):
-    cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale * TEXT_SCALE, TEXT_COLOR, 1)
+def r_text(frame, text: str, x: int, y: int, scale: float, color = TEXT_COLOR):
+    cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale * TEXT_SCALE, color, 1)
 
 
 def r_ball(frame, b: Blob, scale) -> None:
@@ -78,9 +78,8 @@ class Renderer:
             if not self.headless:
                 r_info(f, self.dims, info)
             print(" - ".join([f"{label}: {text}" for label, text in info]) + (" " * 20), end="\r")
-
             self.out.put_nowait(f)
         except Exception as e:
             print("Error in renderer ", e)
-        return TrackResult(detection_result.frame, f, detection_result.ball_track, detection_result.ball,
+        return TrackResult(f, detection_result.ball_track, detection_result.ball,
                            detection_result.info)

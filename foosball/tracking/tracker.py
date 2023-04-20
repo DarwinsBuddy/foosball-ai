@@ -5,8 +5,8 @@ import cv2
 import pypeln as pl
 
 from .colordetection import get_bounds, detect
-from .models import TrackResult, Mask, Track, Bounds, Frame, Info, Blob
-from ..utils import rgb2hsv, HSV, RGB
+from .models import TrackResult, Mask, Track, Bounds, Frame, Info, Blob, FrameDimensions
+from .utils import rgb2hsv, HSV, RGB
 
 
 def log(result: TrackResult) -> None:
@@ -30,7 +30,7 @@ def get_goal_bounds_hsv() -> [HSV, HSV]:
 
 class Tracker:
 
-    def __init__(self, mask: Mask, ball_bounds_hsv: [HSV, HSV], off=False, track_buffer=64, verbose=False,
+    def __init__(self, mask: Mask, dims: FrameDimensions, ball_bounds_hsv: [HSV, HSV], off=False, track_buffer=64, verbose=False,
                  calibration=False, **kwargs):
         self.kwargs = kwargs
         self.mask = mask
@@ -38,6 +38,7 @@ class Tracker:
         self.off = off
         self.verbose = verbose
         self.calibration = calibration
+        self.dims = dims
         # define the lower_ball and upper_ball boundaries of the
         # ball in the HSV color space, then initialize the
         self.bounds = Bounds(ball=ball_bounds_hsv)
@@ -99,4 +100,4 @@ class Tracker:
                 self.calibration_out.put_nowait(detection_result.frame)
             ball_track = self.update_ball_track(ball)
         info = self.get_info(ball_track)
-        return TrackResult(frame, masked, ball_track, ball, info)
+        return TrackResult(masked, ball_track, ball, info)

@@ -1,11 +1,18 @@
 import collections
 from dataclasses import dataclass
+from enum import Enum
+
 import numpy as np
 
-from ..utils import HSV
+HSV = tuple[int, int, int]
+RGB = tuple[int, int, int]
 
 Frame = np.array
 Mask = np.array
+
+class ScaleDirection(Enum):
+    UP = 1
+    DOWN = 2
 
 
 @dataclass
@@ -38,7 +45,6 @@ Info = list[tuple[str, str]]
 
 @dataclass
 class TrackResult:
-    frame: Frame
     rendered: Frame
     ball_track: Track
     ball: Blob

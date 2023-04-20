@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from pypeln import BaseStage
 
-from .models import Mask, FrameDimensions, Bounds
+from .models import Mask, FrameDimensions, Bounds, ScaleDirection
 from .render import Renderer
 from ..pipe import Pipeline
 from .tracker import Tracker, get_ball_bounds_hsv
@@ -30,8 +30,8 @@ def generate_frame_mask(width, height) -> Mask:
 class Tracking(Pipeline):
 
     def _stop(self):
-        self.tracker.stop()
         self.frame_queue.stop()
+        self.tracker.stop()
         self.renderer.stop()
 
     def __init__(self, dims: FrameDimensions, calibration=False, verbose=False, track_buffer=64, headless=False,
@@ -43,7 +43,7 @@ class Tracking(Pipeline):
         width, height = dims.scaled
         mask = generate_frame_mask(width, height)
 
-        self.tracker = Tracker(mask, ball_bounds_hsv=get_ball_bounds_hsv(), off=off, track_buffer=track_buffer,
+        self.tracker = Tracker(mask, dims, ball_bounds_hsv=get_ball_bounds_hsv(), off=off, track_buffer=track_buffer,
                                verbose=verbose, calibration=calibration, **kwargs)
         self.renderer = Renderer(dims, headless=headless, **kwargs)
         self.build()

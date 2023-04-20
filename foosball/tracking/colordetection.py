@@ -4,7 +4,7 @@ import cv2
 import imutils
 
 from .models import DetectionResult, Frame, Blob
-from ..utils import hsv2rgb
+from .utils import hsv2rgb
 
 
 def detect(frame, bounds_hsv, **kwargs) -> DetectionResult:

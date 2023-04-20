@@ -1,6 +1,6 @@
 import cv2
 
-from foosball.utils import rgb2hsv, hsv2rgb
+from foosball.tracking.utils import rgb2hsv, hsv2rgb
 
 
 class OpenCVDisplay:

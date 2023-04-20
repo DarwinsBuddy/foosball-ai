@@ -1,11 +1,11 @@
 from queue import Empty
 
-import cv2
 from imutils.video import FPS
 
-from . import Tracking, FrameDimensions
+from . import Tracking, FrameDimensions, ScaleDirection
 from .render import r_text
 from .tracker import get_ball_bounds_hsv, Bounds
+from .utils import scale
 from ..display.cv import add_calibration_input, OpenCVDisplay, reset_bounds, get_slider_bounds
 
 BALL = 'ball'
@@ -24,8 +24,9 @@ class AI:
         self.ball_bounds_hsv = get_ball_bounds_hsv()
         self.detection_frame = None
 
-        scale_percentage = 0.4
+
         original = self.cap.dim()
+        scale_percentage = 0.4
         scaled = self.scale_dim(original, scale_percentage)
         self.dims = FrameDimensions(original, scaled, scale_percentage)
 
@@ -53,18 +54,25 @@ class AI:
             fps.update()
             f = self.cap.next()
             if f is not None:
-                frame = self.scale(f, self.dims.scaled)
+                f = scale(f, self.dims, ScaleDirection.DOWN)
                 self.adjust_calibration()
-                self.tracking.track(frame)
+                self.tracking.track(f)
                 try:
-                    frame = self.tracking.output.get(block=False)
+                    f = self.tracking.output.get(block=False)
                     fps.stop()
-                    r_text(frame, f"FPS: {int(fps.fps())}", self.dims.scaled[0] - 60, self.dims.scaled[1] - 10,
-                           self.dims.scale)
+                    frames_per_second = int(fps.fps())
+                    if frames_per_second >= 90:
+                        color = (0,255,0)
+                    elif frames_per_second >= 75:
+                        color = (0, 255, 127)
+                    else:
+                        color = (100, 0,255)
+                    r_text(f, f"FPS: {frames_per_second}", self.dims.scaled[0] - 60, self.dims.scaled[1] - 10,
+                           self.dims.scale, color)
                 except Empty:
                     # logging.debug("No new frame")
                     pass
-                self.display.show(frame)
+                self.display.show(f)
                 self.render_calibration()
                 if self.display.render(reset_cb=reset_cb):
                     break
@@ -72,10 +80,10 @@ class AI:
                 break
 
         self.cap.stop()
+        self.tracking.stop()
         self.display.stop()
         if self.color_calibration:
             self.calibration_display.stop()
-        self.tracking.stop()
 
     def render_calibration(self):
         if self.color_calibration:
@@ -89,10 +97,6 @@ class AI:
         # see if some sliders changed
         if self.color_calibration:
             self.tracking.bounds_input(Bounds(ball=get_slider_bounds(BALL)))
-
-    @staticmethod
-    def scale(src, dim):
-        return cv2.resize(src, dim)
 
     @staticmethod
     def scale_dim(dim, scale_percent):

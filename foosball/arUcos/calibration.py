@@ -28,7 +28,7 @@ class Calibration:
         self.dist_coefficients = dist_coefficients
         self.board = board
 
-    def recalibrate(self, shape: np.array):
+    def recalibrate(self, shape: np.array) -> bool:
         counter, corners_list, id_list = [], None, None
         for markers in self._image_markers:
             corners = np.array([m.corners for m in markers])
@@ -36,11 +36,19 @@ class Calibration:
             corners_list = corners if corners_list is None else np.vstack((corners_list, corners))
             id_list = ids if id_list is None else np.vstack((id_list, ids))
             counter.append(len(markers))
-        print("Calibrating camera ....")
-        ret, mtx, dist, rvecs, tvecs = aruco.calibrateCameraAruco(corners_list, id_list, np.array(counter), self.board, shape, None, None)
+        logging.debug("Calibrating camera ....")
+        if len(corners_list) > 0:
+            try:
+                ret, mtx, dist, rvecs, tvecs = aruco.calibrateCameraAruco(corners_list, id_list, np.array(counter), self.board, shape, None, None)
+                self.camera_matrix = mtx
+                self.dist_coefficients = dist
+                return True
+            except cv2.error:
+                logging.error("Could not calibrate camera. Exiting...")
+        else:
+            logging.error("No arUcos detected in any image. Exiting...")
+        return False
 
-        self.camera_matrix = mtx
-        self.dist_coefficients = dist
 
     def add_image_markers(self, arucos: list[Aruco]):
         if arucos is not None and len(arucos) > 0:
@@ -136,10 +144,10 @@ def calibrate_camera(camera_id=None, calibration_images_path=None, headless=Fals
             img = cv2.imread( str(path.joinpath(fn) ))
             img_list.append( img )
             # h, w, c = img.shape
-        print('Calibration images')
+        logging.debug('Calibration images')
         calib = Calibration(board)
         for idx, im in enumerate(tqdm(img_list)):
-            print(f"Calibrating {idx} {fns[idx]}")
+            logging.debug(f"Calibrating {idx} {fns[idx]}")
             img_gray = cv2.cvtColor(im, cv2.COLOR_RGB2GRAY)
             shape = img_gray.shape
             if not headless:
@@ -147,8 +155,8 @@ def calibrate_camera(camera_id=None, calibration_images_path=None, headless=Fals
                 cv2.waitKey(1)
             arucos = detect_markers(img_gray, detector)
             calib.add_image_markers(arucos)
-        calib.recalibrate(shape)
-        calib.store()
+        if calib.recalibrate(shape):
+            calib.store()
     # if camera_id given calibrate with live footage
     elif camera_id is not None:
         calib = Calibration(board).load()
@@ -167,9 +175,9 @@ def calibrate_camera(camera_id=None, calibration_images_path=None, headless=Fals
             if not headless:
                 cv2.imshow("Calibration", img)
                 cv2.waitKey(1)
-        calib.recalibrate(shape)
-        calib.store()
-        print(calib.as_string)
+        if calib.recalibrate(shape):
+            calib.store()
+            logging.debug(calib.as_string)
     else:
         logging.error("Please specify calibration options. Neither image path nor camera_id specified")
 

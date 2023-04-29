@@ -1,6 +1,7 @@
 """
 This code assumes that images used for calibration are of the same arUco marker board provided with code
 """
+import glob
 import logging
 import os.path
 import time
@@ -29,12 +30,13 @@ class Calibration:
         self.board = board
 
     def recalibrate(self, shape: np.array) -> bool:
-        counter, corners_list, id_list = [], None, None
+        counter, corners_list, id_list = [], [], []
         for markers in self._image_markers:
             corners = np.array([m.corners for m in markers])
             ids = np.array([[m.id] for m in markers])
-            corners_list = corners if corners_list is None else np.vstack((corners_list, corners))
-            id_list = ids if id_list is None else np.vstack((id_list, ids))
+            print(corners_list, corners.shape)
+            corners_list = corners if len(corners_list) == 0 else np.vstack((corners_list, corners))
+            id_list = ids if len(id_list) == 0 else np.vstack((id_list, ids))
             counter.append(len(markers))
         logging.debug("Calibrating camera ....")
         if len(corners_list) > 0:
@@ -134,17 +136,15 @@ def calibrate_camera(camera_id=None, calibration_images_path=None, headless=Fals
     shape = None
     # if calibration_images_path calibrate with images
     if calibration_images_path is not None:
-        path = Path(os.path.abspath(calibration_images_path))
+        path = os.path.abspath(calibration_images_path)
         img_list = []
-        calib_fnms = path.glob('*.jpg')
-        fns = list(calib_fnms)
-        print('Using ...', end='')
+        exts = ['*.jpg', '*.JPG', '*.jpeg', '*.JPEG', '*.png', '*.PNG']
+        fns = [f for ext in exts for f in glob.glob(os.path.join(path, ext))]
         for idx, fn in enumerate(fns):
-            print(idx, '', end='')
-            img = cv2.imread( str(path.joinpath(fn) ))
+            img = cv2.imread( str(os.path.join(path, fn)) )
             img_list.append( img )
             # h, w, c = img.shape
-        logging.debug('Calibration images')
+        logging.debug(f'Calibrating {len(img_list)} images')
         calib = Calibration(board)
         for idx, im in enumerate(tqdm(img_list)):
             logging.debug(f"Calibrating {idx} {fns[idx]}")

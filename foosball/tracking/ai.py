@@ -24,7 +24,6 @@ class AI:
         self.ball_bounds_hsv = get_ball_bounds_hsv()
         self.detection_frame = None
 
-
         original = self.cap.dim()
         scale_percentage = 0.4
         scaled = self.scale_dim(original, scale_percentage)
@@ -58,15 +57,15 @@ class AI:
                 self.adjust_calibration()
                 self.tracking.track(f)
                 try:
-                    f = self.tracking.output.get(block=False)
+                    f = self.tracking.output.get(block=True)
                     fps.stop()
                     frames_per_second = int(fps.fps())
                     if frames_per_second >= 90:
-                        color = (0,255,0)
+                        color = (0, 255, 0)
                     elif frames_per_second >= 75:
                         color = (0, 255, 127)
                     else:
-                        color = (100, 0,255)
+                        color = (100, 0, 255)
                     r_text(f, f"FPS: {frames_per_second}", self.dims.scaled[0] - 60, self.dims.scaled[1] - 10,
                            self.dims.scale, color)
                 except Empty:

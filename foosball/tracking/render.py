@@ -4,22 +4,23 @@ import numpy as np
 
 from . import FrameDimensions
 from .colordetection import Blob
-from .models import TrackResult
+from .models import TrackResult, Info
 
 TEXT_SCALE = 0.8
 TEXT_COLOR = (0, 255, 0)
 
 
-def r_info(frame, dims: FrameDimensions, info) -> None:
+def r_info(frame, dims: FrameDimensions, info: Info) -> None:
     # loop over the info tuples and draw them on our frame
     for (i, (k, v)) in enumerate(info):
         txt = "{}: {}".format(k, v)
         x = (int(i / 2) * 100)
         y = dims.scaled[1] - ((i % 2) * 20)
-        r_text(frame, txt, x + 10, y - int(TEXT_SCALE * 20), dims.scale, (0,255,0) if v != "off" else (100,100,100))
+        r_text(frame, txt, x + 10, y - int(TEXT_SCALE * 20), dims.scale,
+               (0, 255, 0) if v != "off" and not txt.startswith("!") else (100, 100, 100))
 
 
-def r_text(frame, text: str, x: int, y: int, scale: float, color = TEXT_COLOR):
+def r_text(frame, text: str, x: int, y: int, scale: float, color=TEXT_COLOR):
     cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale * TEXT_SCALE, color, 1)
 
 
@@ -64,11 +65,11 @@ class Renderer:
     def stop(self) -> None:
         self.out.stop()
 
-    def render(self, detection_result: TrackResult) -> TrackResult:
-        f = detection_result.rendered
-        ball = detection_result.ball
-        track = detection_result.ball_track
-        info = detection_result.info
+    def render(self, track_result: TrackResult) -> TrackResult:
+        f = track_result.frame
+        ball = track_result.ball
+        track = track_result.ball_track
+        info = track_result.info
 
         try:
             if ball is not None:
@@ -81,5 +82,5 @@ class Renderer:
             self.out.put_nowait(f)
         except Exception as e:
             print("Error in renderer ", e)
-        return TrackResult(f, detection_result.ball_track, detection_result.ball,
-                           detection_result.info)
+        return TrackResult(f, track_result.ball_track, track_result.ball,
+                           track_result.info)

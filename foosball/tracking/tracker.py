@@ -1,11 +1,11 @@
 import logging
 from queue import Empty
 
-import cv2
 import pypeln as pl
 
 from .colordetection import get_bounds, detect
-from .models import TrackResult, Mask, Track, Bounds, Frame, Info, Blob, FrameDimensions
+from .models import TrackResult, Track, Bounds, Info, Blob, Frame, Mask, PreprocessResult
+from .preprocess import generate_projection, WarpMode, PreProcessor
 from .utils import rgb2hsv, HSV, RGB
 
 
@@ -30,15 +30,13 @@ def get_goal_bounds_hsv() -> [HSV, HSV]:
 
 class Tracker:
 
-    def __init__(self, mask: Mask, dims: FrameDimensions, ball_bounds_hsv: [HSV, HSV], off=False, track_buffer=64, verbose=False,
+    def __init__(self, ball_bounds_hsv: [HSV, HSV], off=False, track_buffer=64, verbose=False,
                  calibration=False, **kwargs):
         self.kwargs = kwargs
-        self.mask = mask
         self.ball_track = Track(maxlen=track_buffer)
         self.off = off
         self.verbose = verbose
         self.calibration = calibration
-        self.dims = dims
         # define the lower_ball and upper_ball boundaries of the
         # ball in the HSV color space, then initialize the
         self.bounds = Bounds(ball=ball_bounds_hsv)
@@ -60,9 +58,6 @@ class Tracker:
             self.ball_track.appendleft(None)
         return self.ball_track
 
-    def mask_frame(self, frame: Frame) -> Frame:
-        return cv2.bitwise_and(frame, frame, mask=self.mask)
-
     def get_info(self, ball_track: Track) -> Info:
         info = [
             ("Track length", f"{sum([1 for p in ball_track if p is not None])}"),
@@ -83,21 +78,26 @@ class Tracker:
         if self.calibration:
             self.bounds_in.put_nowait(bounds)
 
-    def track(self, frame) -> TrackResult:
-        masked = None
+    def track(self, preprocess_result: PreprocessResult) -> TrackResult:
         ball = None
         ball_track = None
         if not self.off:
-            masked = self.mask_frame(frame)
             if self.calibration:
                 try:
                     self.bounds = self.bounds_in.get_nowait()
                 except Empty:
                     pass
-            detection_result = detect(masked, self.bounds.ball)
+            f = preprocess_result.preprocessed if preprocess_result.preprocessed is not None else preprocess_result.original
+            detection_result = detect(f, self.bounds.ball)
             ball = detection_result.blob
+            # do not forget to project detected points onto the original frame on rendering
+            if preprocess_result.homography_matrix is not None:
+                dewarp = generate_projection(preprocess_result.homography_matrix, WarpMode.DEWARP)
+                x0, y0 = dewarp(ball.bbox[0], ball.bbox[1])
+                x1, y1 = dewarp(ball.bbox[0] + ball.bbox[2], ball.bbox[1] + ball.bbox[3])
+                ball = Blob(dewarp(ball.center), (x0, y0, x1-x0, y1-y0))
             if self.calibration:
                 self.calibration_out.put_nowait(detection_result.frame)
             ball_track = self.update_ball_track(ball)
-        info = self.get_info(ball_track)
-        return TrackResult(masked, ball_track, ball, info)
+        info = preprocess_result.info + self.get_info(ball_track)
+        return TrackResult(preprocess_result.original, ball_track, ball, info)

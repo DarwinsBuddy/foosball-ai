@@ -4,6 +4,7 @@ import numpy as np
 from pypeln import BaseStage
 
 from .models import Mask, FrameDimensions, Bounds, ScaleDirection
+from .preprocess import PreProcessor
 from .render import Renderer
 from ..pipe import Pipeline
 from .tracker import Tracker, get_ball_bounds_hsv
@@ -43,7 +44,8 @@ class Tracking(Pipeline):
         width, height = dims.scaled
         mask = generate_frame_mask(width, height)
 
-        self.tracker = Tracker(mask, dims, ball_bounds_hsv=get_ball_bounds_hsv(), off=off, track_buffer=track_buffer,
+        self.preprocessor = PreProcessor(mask=mask, headless=headless)
+        self.tracker = Tracker(ball_bounds_hsv=get_ball_bounds_hsv(), off=off, track_buffer=track_buffer,
                                verbose=verbose, calibration=calibration, **kwargs)
         self.renderer = Renderer(dims, headless=headless, **kwargs)
         self.build()
@@ -62,6 +64,7 @@ class Tracking(Pipeline):
     def _build(self) -> BaseStage:
         return (
             self.frame_queue
+            | pl.process.map(self.preprocessor.process)
             | pl.process.map(self.tracker.track)
             | pl.process.map(self.renderer.render)
             # | pl.process.each(self.log)

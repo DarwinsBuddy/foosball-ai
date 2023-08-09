@@ -1,6 +1,7 @@
 import collections
 from dataclasses import dataclass
 from enum import Enum
+from typing import Optional
 
 import numpy as np
 
@@ -45,7 +46,15 @@ Info = list[tuple[str, str]]
 
 @dataclass
 class TrackResult:
-    rendered: Frame
+    frame: Frame
     ball_track: Track
     ball: Blob
-    info: list[tuple]
+    info: Info
+
+
+@dataclass
+class PreprocessResult:
+    original: Frame
+    preprocessed: Optional[Frame]
+    homography_matrix: Optional[np.ndarray]  # 3x3 matrix used to warp the image and project points
+    info: Info

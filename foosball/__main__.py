@@ -5,16 +5,31 @@ import signal
 from foosball.arUcos.calibration import calibrate_camera
 from .tracking.ai import AI
 
+
 def dir_path(string):
     if os.path.isdir(string):
         return string
     else:
         raise NotADirectoryError(string)
 
+
+def file_path(string):
+    if os.path.isfile(string):
+        return string
+    else:
+        raise FileNotFoundError(string)
+
+
 ap = argparse.ArgumentParser()
 ap.add_argument("-f", "--file", help="path to the (optional) video file")
-ap.add_argument("-c",  "--calibration", action='store_true', help="Calibration mode")
-ap.add_argument("-ci", "--calibrationImagePath", type=dir_path, default=None, help="Image path for calibration mode. If not given switching to live calibration")
+ap.add_argument("-c", "--calibration", action='store_true', help="Calibration mode")
+ap.add_argument("-ci", "--calibrationImagePath", type=dir_path, default=None,
+                help="Images path for calibration mode. If not given switching to live calibration")
+ap.add_argument("-cv", "--calibrationVideo", type=file_path, default=None,
+                help="Path to video file for calibration mode. If not given switching to live calibration")
+ap.add_argument("-cs", "--calibrationSampleSize", type=int, default=50,
+                help="Sample size for calibration mode. If not given all detected image markers will be taken into "
+                     "account")
 ap.add_argument("-cam", "--cameraId", type=int, default=None, help="Camera id to be used")
 ap.add_argument("-cc", "--colorCalibration", choices=['ball', 'all'], help="Color calibration mode")
 ap.add_argument("-v", "--verbose", action='store_true', help="Verbose")
@@ -37,19 +52,23 @@ if __name__ == '__main__':
     if kwargs.get('file'):
         if kwargs.get('display') == 'cv':
             from .display.cv import OpenCVDisplay
+
             dis = OpenCVDisplay()
         elif kwargs.get('display') == 'gear':
             print("[ALPHA] Feature - Streaming not fully supported")
             from .display.gear import StreamDisplay
+
             dis = StreamDisplay()
         else:
             usage_and_exit()
 
         if kwargs.get('capture') == 'gear':
             from .capture.gearcapture import GearCapture
+
             cap = GearCapture(kwargs.get('file'))
         elif kwargs.get('capture') == 'imutils':
             from .capture.filecapture import FileCapture
+
             cap = FileCapture(kwargs.get('file'))
         else:
             usage_and_exit()
@@ -65,6 +84,8 @@ if __name__ == '__main__':
         signal.signal(signal.SIGINT, signal_handler)
         ai.process_video()
     elif kwargs.get('calibration'):
-        calibrate_camera(camera_id=kwargs.get('cameraId'), calibration_images_path=kwargs.get('calibrationImagePath'), headless=False)
+        calibrate_camera(camera_id=kwargs.get('cameraId'), calibration_video_path=kwargs.get('calibrationVideo'),
+                         calibration_images_path=kwargs.get('calibrationImagePath'), headless=False,
+                         sample_size=kwargs.get('calibrationSampleSize'))
     else:
         usage_and_exit()

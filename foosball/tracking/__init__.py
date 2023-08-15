@@ -1,17 +1,44 @@
+import logging
+
 import pypeln as pl
 import cv2
 import numpy as np
 from pypeln import BaseStage
 
-from .models import Mask, FrameDimensions, Bounds, ScaleDirection
+from .models import Mask, FrameDimensions, Bounds, ScaleDirection, RGB, HSV
 from .preprocess import PreProcessor
 from .render import Renderer
+from .utils import rgb2hsv
 from ..pipe import Pipeline
-from .tracker import Tracker, get_ball_bounds_hsv
+from .tracker import Tracker
 
 
 def dim(frame) -> [int, int]:
     return [frame.shape[1], frame.shape[0]]
+
+
+def yellow_ball() -> [RGB, RGB]:
+    lower = rgb2hsv((117, 106, 86))
+    upper = rgb2hsv((117, 255, 92))
+
+    return [lower, upper]
+
+
+def orange_ball() -> [RGB, RGB]:
+    lower = rgb2hsv((166, 94, 72))
+    upper = rgb2hsv((0, 249, 199))
+
+    return [lower, upper]
+
+
+def get_ball_bounds(ball: str) -> [RGB, RGB]:
+    if ball == 'orange' or ball == 'o':
+        return orange_ball()
+    elif ball == 'yellow' or ball == 'y':
+        return yellow_ball()
+    else:
+        logging.error("Unknown ball color. Falling back to 'orange'")
+        return orange_ball()
 
 
 def generate_frame_mask(width, height) -> Mask:
@@ -35,7 +62,7 @@ class Tracking(Pipeline):
         self.tracker.stop()
         self.renderer.stop()
 
-    def __init__(self, dims: FrameDimensions, calibration=False, verbose=False, track_buffer=64, headless=False,
+    def __init__(self, dims: FrameDimensions, ball_bounds_hsv: [HSV, HSV], calibration=False, verbose=False, headless=False,
                  off=False, **kwargs):
         super().__init__()
         self.frame_queue = pl.process.IterableQueue()
@@ -45,8 +72,7 @@ class Tracking(Pipeline):
         mask = generate_frame_mask(width, height)
 
         self.preprocessor = PreProcessor(mask=mask, headless=headless)
-        self.tracker = Tracker(ball_bounds_hsv=get_ball_bounds_hsv(), off=off, track_buffer=track_buffer,
-                               verbose=verbose, calibration=calibration, **kwargs)
+        self.tracker = Tracker(ball_bounds_hsv, off=off, verbose=verbose, calibration=calibration, **kwargs)
         self.renderer = Renderer(dims, headless=headless, **kwargs)
         self.build()
 
@@ -63,13 +89,13 @@ class Tracking(Pipeline):
 
     def _build(self) -> BaseStage:
         return (
-            self.frame_queue
-            | pl.process.map(self.preprocessor.process)
-            | pl.process.map(self.tracker.track)
-            | pl.process.map(self.renderer.render)
-            # | pl.process.each(self.log)
-            | pl.thread.filter(lambda x: False)
-            | list
+                self.frame_queue
+                | pl.process.map(self.preprocessor.process)
+                | pl.process.map(self.tracker.track)
+                | pl.process.map(self.renderer.render)
+                # | pl.process.each(self.log)
+                | pl.thread.filter(lambda x: False)
+                | list
         )
 
     def track(self, frame) -> None:

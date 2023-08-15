@@ -4,36 +4,20 @@ from queue import Empty
 import pypeln as pl
 
 from .colordetection import get_bounds, detect
-from .models import TrackResult, Track, Bounds, Info, Blob, Frame, Mask, PreprocessResult
-from .preprocess import generate_projection, WarpMode, PreProcessor
-from .utils import rgb2hsv, HSV, RGB
+from .models import TrackResult, Track, Bounds, Info, Blob, PreprocessResult
+from .preprocess import generate_projection, WarpMode
+from .utils import HSV
 
 
 def log(result: TrackResult) -> None:
     logging.debug(result.info)
 
 
-def get_ball_bounds_hsv() -> [RGB, RGB]:
-    # TODO: #2 calibration for the demo footage (other ball => other values)
-    lower = rgb2hsv((166, 94, 72))
-    upper = rgb2hsv((0, 249, 199))
-
-    return [lower, upper]
-
-
-def get_goal_bounds_hsv() -> [HSV, HSV]:
-    lower = rgb2hsv((0, 0, 0))
-    upper = rgb2hsv((0, 0, 8))
-
-    return [lower, upper]
-
-
 class Tracker:
 
-    def __init__(self, ball_bounds_hsv: [HSV, HSV], off=False, track_buffer=64, verbose=False,
-                 calibration=False, **kwargs):
+    def __init__(self, ball_bounds_hsv: [HSV, HSV], off=False, verbose=False, calibration=False, **kwargs):
         self.kwargs = kwargs
-        self.ball_track = Track(maxlen=track_buffer)
+        self.ball_track = Track(maxlen=kwargs.get('buffer'))
         self.off = off
         self.verbose = verbose
         self.calibration = calibration
@@ -91,7 +75,7 @@ class Tracker:
             detection_result = detect(f, self.bounds.ball)
             ball = detection_result.blob
             # do not forget to project detected points onto the original frame on rendering
-            if preprocess_result.homography_matrix is not None:
+            if ball is not None and preprocess_result.homography_matrix is not None:
                 dewarp = generate_projection(preprocess_result.homography_matrix, WarpMode.DEWARP)
                 x0, y0 = dewarp(ball.bbox[0], ball.bbox[1])
                 x1, y1 = dewarp(ball.bbox[0] + ball.bbox[2], ball.bbox[1] + ball.bbox[3])

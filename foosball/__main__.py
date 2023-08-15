@@ -32,6 +32,7 @@ ap.add_argument("-cs", "--calibrationSampleSize", type=int, default=50,
                      "account")
 ap.add_argument("-cam", "--cameraId", type=int, default=None, help="Camera id to be used")
 ap.add_argument("-cc", "--colorCalibration", choices=['ball', 'all'], help="Color calibration mode")
+ap.add_argument("-ba", "--ball", choices=['orange', 'yellow'], default='orange', help="Pre-configured ball color bounds")
 ap.add_argument("-v", "--verbose", action='store_true', help="Verbose")
 ap.add_argument("-o", "--off", action='store_true', help="Disable ai")
 ap.add_argument("-q", "--headless", action='store_true', help="Disable visualizations")

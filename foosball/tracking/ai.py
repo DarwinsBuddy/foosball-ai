@@ -2,9 +2,9 @@ from queue import Empty
 
 from imutils.video import FPS
 
-from . import Tracking, FrameDimensions, ScaleDirection
+from . import Tracking, FrameDimensions, ScaleDirection, get_ball_bounds
 from .render import r_text
-from .tracker import get_ball_bounds_hsv, Bounds
+from .tracker import Bounds
 from .utils import scale
 from ..display.cv import add_calibration_input, OpenCVDisplay, reset_bounds, get_slider_bounds
 
@@ -21,7 +21,7 @@ class AI:
         self.color_calibration = self.kwargs.get('colorCalibration') in ['all', 'ball']
         self.verbose = self.kwargs.get('verbose')
         self._stopped = False
-        self.ball_bounds_hsv = get_ball_bounds_hsv()
+        self.ball_bounds_hsv = get_ball_bounds(self.kwargs.get('ball'))
         self.detection_frame = None
 
         original = self.cap.dim()
@@ -29,7 +29,7 @@ class AI:
         scaled = self.scale_dim(original, scale_percentage)
         self.dims = FrameDimensions(original, scaled, scale_percentage)
 
-        self.tracking = Tracking(self.dims, **self.kwargs)
+        self.tracking = Tracking(self.dims, self.ball_bounds_hsv, **self.kwargs)
 
         if self.color_calibration:
             self.calibration_display = OpenCVDisplay(BALL, pos='br')

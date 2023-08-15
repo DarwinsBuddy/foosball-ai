@@ -16,12 +16,19 @@ class WarpMode(Enum):
 
 
 class PreProcessor:
-    def __init__(self, headless=True, mask=None, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
+    def __init__(self, headless=True, mask=None, used_markers=None, redetect_markers_frames=60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
                  aruco_params=cv2.aruco.DetectorParameters(), **kwargs):
+        self.redetect_markers_frames = redetect_markers_frames
+        if used_markers is None:
+            used_markers = [1, 2, 3, 4]
+        self.used_markers = used_markers
         self.headless = headless
         self.mask = mask
         self.kwargs = kwargs
         self.detector, _ = calibration.init_aruco_detector(aruco_dictionary, aruco_params)
+        self.markers = []
+        self.homography_matrix = None
+        self.frames_since_last_marker_detection = 0
         # self.out = pl.process.IterableQueue()
 
     def stop(self) -> None:
@@ -39,18 +46,24 @@ class PreProcessor:
         return frame if self.mask is None else cv2.bitwise_and(frame, frame, mask=self.mask)
 
     def process(self, frame: Frame) -> PreprocessResult:
-        # detect markers
-        markers = self.detect_markers(frame)
-        homography_matrix = None
-        # check if there are exactly 4 markers present
-        info = [(f'{"!" if len(markers) != 4 else ""}Corners', f'{len(markers)}')]
-        if len(markers) == 4:
+        info = [(f'? Markers', f'{len(self.markers)}')]
+        if self.frames_since_last_marker_detection == 0 or len(self.markers) == 0:
+            # detect markers
+            markers = self.detect_markers(frame)
+            # check if there are exactly 4 markers present
+            markers = [m for m in markers if m.id in self.used_markers]
+            info = [(f'{"! " if len(markers) != 4 else ""}Markers', f'{len(markers)}')]
+            if len(markers) == 4:
+                self.markers = markers
+        self.frames_since_last_marker_detection = (self.frames_since_last_marker_detection + 1) % self.redetect_markers_frames
+
+        if len(self.markers) == 4:
             # crop and warp
-            preprocessed, homography_matrix = self.four_point_transform(frame, markers)
+            preprocessed, self.homography_matrix = self.four_point_transform(frame, self.markers)
         else:
             preprocessed = self.mask_frame(frame)
 
-        return PreprocessResult(frame, preprocessed, homography_matrix, info)
+        return PreprocessResult(frame, preprocessed, self.homography_matrix, info)
 
     @staticmethod
     def corners2pt(corners) -> [int, int]:
@@ -85,7 +98,6 @@ class PreProcessor:
         # obtain a consistent order of the points and unpack them
         # individually
         src_pts = self.order_points(pts)
-        print(src_pts)
         (tl, tr, br, bl) = src_pts
         # compute the width of the new image, which will be the
         # maximum distance between bottom-right and bottom-left
@@ -131,9 +143,10 @@ def generate_projection(homography_matrix, mode: WarpMode):
     H = homography_matrix if mode == WarpMode.WARP else np.linalg.inv(homography_matrix)
 
     def _warp_func(src_pt):
-        src = np.array([src_pt[0], src_pt[1], 1]) # add a dimension to convert into homogenous coordinates
-        src = src.reshape(3, 1) # reshape to line vector for proper matrix multiplication
+        src = np.array([src_pt[0], src_pt[1], 1])  # add a dimension to convert into homogenous coordinates
+        src = src.reshape(3, 1)  # reshape to line vector for proper matrix multiplication
         dest = np.dot(H, src)  # warp point (with potential perspective projection)
         dest = dest / dest[2]  # project back onto cartesian coordinates
         return int(dest[0]), int(dest[1])
+
     return _warp_func

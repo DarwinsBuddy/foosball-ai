@@ -7,20 +7,32 @@ from .colordetection import Blob
 from .models import TrackResult, Info
 
 TEXT_SCALE = 0.8
-TEXT_COLOR = (0, 255, 0)
+GREEN = (0, 255, 0)
+GRAY = (100, 100, 100)
+ORANGE = (0, 143, 252)
+
+
+def text_color(key, value):
+    if value == "off" or key.startswith("!"):
+        return GRAY
+    elif key.startswith("?"):
+        return ORANGE
+    else:
+        return GREEN
 
 
 def r_info(frame, dims: FrameDimensions, info: Info) -> None:
     # loop over the info tuples and draw them on our frame
+    height = int(len(info) / 2) * 25
+    cv2.rectangle(frame, (0, dims.scaled[1] - height), (dims.scaled[0], dims.scaled[1]), (0, 0, 0), -1)
     for (i, (k, v)) in enumerate(info):
         txt = "{}: {}".format(k, v)
         x = (int(i / 2) * 100)
         y = dims.scaled[1] - ((i % 2) * 20)
-        r_text(frame, txt, x + 10, y - int(TEXT_SCALE * 20), dims.scale,
-               (0, 255, 0) if v != "off" and not txt.startswith("!") else (100, 100, 100))
+        r_text(frame, txt, x + 10, y - int(TEXT_SCALE * 20), dims.scale, text_color(txt, v))
 
 
-def r_text(frame, text: str, x: int, y: int, scale: float, color=TEXT_COLOR):
+def r_text(frame, text: str, x: int, y: int, scale: float, color=GREEN):
     cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale * TEXT_SCALE, color, 1)
 
 

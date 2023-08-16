@@ -25,9 +25,9 @@ class AI:
         self.detection_frame = None
 
         original = self.cap.dim()
-        scale_percentage = 0.4
-        scaled = self.scale_dim(original, scale_percentage)
-        self.dims = FrameDimensions(original, scaled, scale_percentage)
+        self.scale = self.kwargs.get('scale')
+        scaled = self.scale_dim(original, self.scale)
+        self.dims = FrameDimensions(original, scaled, self.scale)
 
         self.tracking = Tracking(self.dims, self.ball_bounds_hsv, **self.kwargs)
 

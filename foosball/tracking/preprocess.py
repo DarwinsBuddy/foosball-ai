@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from ..arUcos import calibration, Aruco
-from ..tracking.models import Frame, PreprocessResult
+from ..tracking.models import Frame, PreprocessResult, Point, Rect
 
 TEXT_SCALE = 0.8
 TEXT_COLOR = (0, 255, 0)
@@ -15,15 +15,31 @@ class WarpMode(Enum):
     DEWARP = 2
 
 
+def pad_pt(pt: Point, xpad, ypad) -> Point:
+    return [max(0, pt[0] + xpad), max(0, pt[1] + ypad)]
+
+
+def pad_rect(rectangle: Rect, xpad: int, ypad: int) -> Rect:
+    (tl, tr, br, bl) = rectangle
+    return (
+        pad_pt(tl, -xpad, -ypad),
+        pad_pt(tr, xpad, -ypad),
+        pad_pt(br, xpad, ypad),
+        pad_pt(bl, -xpad, ypad)
+    )
+
+
 class PreProcessor:
-    def __init__(self, headless=True, mask=None, used_markers=None, redetect_markers_frames=60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
-                 aruco_params=cv2.aruco.DetectorParameters(), **kwargs):
+    def __init__(self, headless=True, mask=None, used_markers=None, redetect_markers_frames: int = 60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
+                 aruco_params=cv2.aruco.DetectorParameters(), xpad: int = 50, ypad: int = 50, **kwargs):
         self.redetect_markers_frames = redetect_markers_frames
         if used_markers is None:
-            used_markers = [1, 2, 3, 4]
+            used_markers = [0, 1, 2, 3, 4]
         self.used_markers = used_markers
         self.headless = headless
         self.mask = mask
+        self.xpad = xpad
+        self.ypad = ypad
         self.kwargs = kwargs
         self.detector, _ = calibration.init_aruco_detector(aruco_dictionary, aruco_params)
         self.markers = []
@@ -53,10 +69,10 @@ class PreProcessor:
             # check if there are exactly 4 markers present
             markers = [m for m in markers if m.id in self.used_markers]
             info = [(f'{"! " if len(markers) != 4 else ""}Markers', f'{len(markers)}')]
+            # logging.debug(f"markers {[list(m.id)[0] for m in markers]}")
             if len(markers) == 4:
                 self.markers = markers
         self.frames_since_last_marker_detection = (self.frames_since_last_marker_detection + 1) % self.redetect_markers_frames
-
         if len(self.markers) == 4:
             # crop and warp
             preprocessed, self.homography_matrix = self.four_point_transform(frame, self.markers)
@@ -71,6 +87,7 @@ class PreProcessor:
         c_x = int(moments["m10"] / moments["m00"])
         c_y = int(moments["m01"] / moments["m00"])
         return [c_x, c_y]
+
 
     @staticmethod
     def order_points(pts: np.ndarray) -> np.ndarray:
@@ -98,6 +115,8 @@ class PreProcessor:
         # obtain a consistent order of the points and unpack them
         # individually
         src_pts = self.order_points(pts)
+        # pad
+        src_pts = pad_rect(src_pts, self.xpad, self.ypad)
         (tl, tr, br, bl) = src_pts
         # compute the width of the new image, which will be the
         # maximum distance between bottom-right and bottom-left

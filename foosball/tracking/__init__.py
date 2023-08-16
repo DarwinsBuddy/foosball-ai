@@ -17,21 +17,21 @@ def dim(frame) -> [int, int]:
     return [frame.shape[1], frame.shape[0]]
 
 
-def yellow_ball() -> [RGB, RGB]:
-    lower = rgb2hsv((117, 106, 86))
-    upper = rgb2hsv((117, 255, 92))
+def yellow_ball() -> [HSV, HSV]:
+    lower = rgb2hsv((140, 86, 73))
+    upper = rgb2hsv((0, 255, 94))
 
     return [lower, upper]
 
 
-def orange_ball() -> [RGB, RGB]:
+def orange_ball() -> [HSV, HSV]:
     lower = rgb2hsv((166, 94, 72))
     upper = rgb2hsv((0, 249, 199))
 
     return [lower, upper]
 
 
-def get_ball_bounds(ball: str) -> [RGB, RGB]:
+def get_ball_bounds(ball: str) -> [HSV, HSV]:
     if ball == 'orange' or ball == 'o':
         return orange_ball()
     elif ball == 'yellow' or ball == 'y':
@@ -71,7 +71,7 @@ class Tracking(Pipeline):
         width, height = dims.scaled
         mask = generate_frame_mask(width, height)
 
-        self.preprocessor = PreProcessor(mask=mask, headless=headless)
+        self.preprocessor = PreProcessor(mask=mask, headless=headless, **kwargs)
         self.tracker = Tracker(ball_bounds_hsv, off=off, verbose=verbose, calibration=calibration, **kwargs)
         self.renderer = Renderer(dims, headless=headless, **kwargs)
         self.build()

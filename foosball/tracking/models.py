@@ -11,10 +11,14 @@ RGB = tuple[int, int, int]
 Frame = np.array
 Mask = np.array
 
+
 class ScaleDirection(Enum):
     UP = 1
     DOWN = 2
 
+
+Point = [int, int]
+Rect = (Point, Point, Point, Point)
 
 @dataclass
 class FrameDimensions:
@@ -25,8 +29,8 @@ class FrameDimensions:
 
 @dataclass
 class Blob:
-    center: [int, int]
-    bbox: [int, int, int, int]
+    center: Point
+    bbox: [int, int, int, int]  # x y width height
 
 
 @dataclass

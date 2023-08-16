@@ -62,7 +62,7 @@ class Tracker:
         if self.calibration:
             self.bounds_in.put_nowait(bounds)
 
-    def track(self, preprocess_result: PreprocessResult) -> TrackResult:
+    def track(self, preprocess_result: PreprocessResult, debug=False) -> TrackResult:
         ball = None
         ball_track = None
         if not self.off:
@@ -75,13 +75,17 @@ class Tracker:
             detection_result = detect(f, self.bounds.ball)
             ball = detection_result.blob
             # do not forget to project detected points onto the original frame on rendering
-            if ball is not None and preprocess_result.homography_matrix is not None:
-                dewarp = generate_projection(preprocess_result.homography_matrix, WarpMode.DEWARP)
-                x0, y0 = dewarp(ball.bbox[0], ball.bbox[1])
-                x1, y1 = dewarp(ball.bbox[0] + ball.bbox[2], ball.bbox[1] + ball.bbox[3])
-                ball = Blob(dewarp(ball.center), (x0, y0, x1-x0, y1-y0))
+            if not debug:
+                if ball is not None and preprocess_result.homography_matrix is not None:
+                    dewarp = generate_projection(preprocess_result.homography_matrix, WarpMode.DEWARP)
+                    x0, y0 = dewarp((ball.bbox[0], ball.bbox[1]))
+                    x1, y1 = dewarp((ball.bbox[0] + ball.bbox[2], ball.bbox[1] + ball.bbox[3]))
+                    ball = Blob(dewarp(ball.center), (x0, y0, x1-x0, y1-y0))
             if self.calibration:
                 self.calibration_out.put_nowait(detection_result.frame)
             ball_track = self.update_ball_track(ball)
         info = preprocess_result.info + self.get_info(ball_track)
-        return TrackResult(preprocess_result.original, ball_track, ball, info)
+        if not debug:
+            return TrackResult(preprocess_result.original, ball_track, ball, info)
+        else:
+            return TrackResult(preprocess_result.preprocessed, ball_track, ball, info)

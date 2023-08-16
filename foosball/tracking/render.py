@@ -6,7 +6,7 @@ from . import FrameDimensions
 from .colordetection import Blob
 from .models import TrackResult, Info
 
-TEXT_SCALE = 0.8
+TEXT_SCALE = 1.2
 GREEN = (0, 255, 0)
 GRAY = (100, 100, 100)
 ORANGE = (0, 143, 252)
@@ -27,9 +27,9 @@ def r_info(frame, dims: FrameDimensions, info: Info) -> None:
     cv2.rectangle(frame, (0, dims.scaled[1] - height), (dims.scaled[0], dims.scaled[1]), (0, 0, 0), -1)
     for (i, (k, v)) in enumerate(info):
         txt = "{}: {}".format(k, v)
-        x = (int(i / 2) * 100)
+        x = (int(i / 2) * 170) + 10
         y = dims.scaled[1] - ((i % 2) * 20)
-        r_text(frame, txt, x + 10, y - int(TEXT_SCALE * 20), dims.scale, text_color(txt, v))
+        r_text(frame, txt, x, y - int(TEXT_SCALE * 20), dims.scale, text_color(txt, v))
 
 
 def r_text(frame, text: str, x: int, y: int, scale: float, color=GREEN):
@@ -90,7 +90,7 @@ class Renderer:
             r_track(f, track, self.dims.scale)
             if not self.headless:
                 r_info(f, self.dims, info)
-            print(" - ".join([f"{label}: {text}" for label, text in info]) + (" " * 20), end="\r")
+            print(" - ".join([f"{label}: {text}" for label, text in info]) + (" " * 80), end="\r")
             self.out.put_nowait(f)
         except Exception as e:
             print("Error in renderer ", e)

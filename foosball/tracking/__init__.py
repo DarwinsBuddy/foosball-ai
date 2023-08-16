@@ -5,10 +5,9 @@ import cv2
 import numpy as np
 from pypeln import BaseStage
 
-from .models import Mask, FrameDimensions, Bounds, ScaleDirection, RGB, HSV
+from .models import Mask, FrameDimensions, BallConfig, ScaleDirection, RGB, HSV, rgb2hsv, GoalConfig
 from .preprocess import PreProcessor
 from .render import Renderer
-from .utils import rgb2hsv
 from ..pipe import Pipeline
 from .tracker import Tracker
 
@@ -17,21 +16,25 @@ def dim(frame) -> [int, int]:
     return [frame.shape[1], frame.shape[0]]
 
 
-def yellow_ball() -> [HSV, HSV]:
-    lower = rgb2hsv((140, 86, 73))
-    upper = rgb2hsv((0, 255, 94))
+def yellow_ball() -> BallConfig:
+    lower = rgb2hsv(np.array([140, 86, 73]))
+    upper = rgb2hsv(np.array([0, 255, 94]))
 
-    return [lower, upper]
-
-
-def orange_ball() -> [HSV, HSV]:
-    lower = rgb2hsv((166, 94, 72))
-    upper = rgb2hsv((0, 249, 199))
-
-    return [lower, upper]
+    return BallConfig(bounds_hsv=[lower, upper], invert_frame=False, invert_mask=False)
 
 
-def get_ball_bounds(ball: str) -> [HSV, HSV]:
+def orange_ball() -> BallConfig:
+    lower = rgb2hsv(np.array([166, 94, 72]))
+    upper = rgb2hsv(np.array([0, 249, 199]))
+
+    return BallConfig(bounds_hsv=[lower, upper], invert_frame=False, invert_mask=False)
+
+
+def get_goal_config() -> GoalConfig:
+    return GoalConfig(bounds=[0, 235], invert_frame=True, invert_mask=True)
+
+
+def get_ball_config(ball: str) -> BallConfig:
     if ball == 'orange' or ball == 'o':
         return orange_ball()
     elif ball == 'yellow' or ball == 'y':
@@ -62,17 +65,18 @@ class Tracking(Pipeline):
         self.tracker.stop()
         self.renderer.stop()
 
-    def __init__(self, dims: FrameDimensions, ball_bounds_hsv: [HSV, HSV], calibration=False, verbose=False, headless=False,
+    def __init__(self, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, verbose=False,
+                 headless=False,
                  off=False, **kwargs):
         super().__init__()
         self.frame_queue = pl.process.IterableQueue()
-
+        self.calibration = kwargs.get('calibration')
         self.dims = dims
         width, height = dims.scaled
         mask = generate_frame_mask(width, height)
 
-        self.preprocessor = PreProcessor(mask=mask, headless=headless, **kwargs)
-        self.tracker = Tracker(ball_bounds_hsv, off=off, verbose=verbose, calibration=calibration, **kwargs)
+        self.preprocessor = PreProcessor(goal_config, mask=mask, headless=headless, **kwargs)
+        self.tracker = Tracker(ball_config, off=off, verbose=verbose, **kwargs)
         self.renderer = Renderer(dims, headless=headless, **kwargs)
         self.build()
 
@@ -82,10 +86,16 @@ class Tracking(Pipeline):
 
     @property
     def calibration_output(self) -> pl.process.IterableQueue:
-        return self.tracker.calibration_out
+        if self.calibration == "ball":
+            return self.tracker.calibration_out
+        elif self.calibration == "goal":
+            return self.preprocessor.calibration_out
 
-    def bounds_input(self, bounds: Bounds) -> None:
-        return self.tracker.bounds_input(bounds)
+    def config_input(self, config) -> None:
+        if self.calibration == "ball":
+            return self.tracker.config_input(config)
+        elif self.calibration == "goal":
+            return self.preprocessor.config_input(config)
 
     def _build(self) -> BaseStage:
         return (

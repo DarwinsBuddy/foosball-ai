@@ -2,13 +2,10 @@ from queue import Empty
 
 from imutils.video import FPS
 
-from . import Tracking, FrameDimensions, ScaleDirection, get_ball_bounds
+from . import Tracking, FrameDimensions, ScaleDirection, get_ball_config, get_goal_config
 from .render import r_text
-from .tracker import Bounds
 from .utils import scale
-from ..display.cv import add_calibration_input, OpenCVDisplay, reset_bounds, get_slider_bounds
-
-BALL = 'ball'
+from ..display.cv import OpenCVDisplay, get_slider_config, add_config_input, reset_config, store_config
 
 
 class AI:
@@ -18,10 +15,13 @@ class AI:
         self.kwargs = kwargs
         self.cap = cap
         self.display = dis
-        self.color_calibration = self.kwargs.get('colorCalibration') in ['all', 'ball']
+        self.calibration = self.kwargs.get('calibration')
         self.verbose = self.kwargs.get('verbose')
         self._stopped = False
-        self.ball_bounds_hsv = get_ball_bounds(self.kwargs.get('ball'))
+        self.ball_config = get_ball_config(self.kwargs.get('ball'))
+        self.goals_config = get_goal_config()
+        if self.calibration is not None:
+            self.calibration_bounds = lambda: self.ball_config if self.calibration == 'ball' else self.goals_config
         self.detection_frame = None
 
         original = self.cap.dim()
@@ -29,20 +29,22 @@ class AI:
         scaled = self.scale_dim(original, self.scale)
         self.dims = FrameDimensions(original, scaled, self.scale)
 
-        self.tracking = Tracking(self.dims, self.ball_bounds_hsv, **self.kwargs)
+        self.tracking = Tracking(self.dims, self.ball_config, self.goals_config, **self.kwargs)
 
-        if self.color_calibration:
-            self.calibration_display = OpenCVDisplay(BALL, pos='br')
+        if self.calibration is not None:
+            self.calibration_display = OpenCVDisplay(self.calibration, pos='br')
             # init slider window
-            add_calibration_input(BALL, *self.ball_bounds_hsv)
+            add_config_input(self.calibration, self.calibration_bounds())
 
     def stop(self):
         self._stopped = True
 
     def process_video(self):
         def reset_cb():
-            if self.color_calibration:
-                reset_bounds(BALL, *self.ball_bounds_hsv)
+            reset_config(self.calibration, self.calibration_bounds())
+
+        def store_cb():
+            store_config(self.calibration, self.calibration_bounds())
 
         self.tracking.start()
 
@@ -73,7 +75,7 @@ class AI:
                     pass
                 self.display.show(f)
                 self.render_calibration()
-                if self.display.render(reset_cb=reset_cb):
+                if self.display.render(reset_cb=reset_cb, store_cb=store_cb):
                     break
             else:
                 break
@@ -81,11 +83,11 @@ class AI:
         self.cap.stop()
         self.tracking.stop()
         self.display.stop()
-        if self.color_calibration:
+        if self.calibration is not None:
             self.calibration_display.stop()
 
     def render_calibration(self):
-        if self.color_calibration:
+        if self.calibration:
             try:
                 self.detection_frame = self.tracking.calibration_output.get_nowait()
                 self.calibration_display.show(self.detection_frame)
@@ -94,8 +96,8 @@ class AI:
 
     def adjust_calibration(self):
         # see if some sliders changed
-        if self.color_calibration:
-            self.tracking.bounds_input(Bounds(ball=get_slider_bounds(BALL)))
+        if self.calibration in ["goal", "ball"]:
+            self.tracking.config_input(get_slider_config(self.calibration))
 
     @staticmethod
     def scale_dim(dim, scale_percent):

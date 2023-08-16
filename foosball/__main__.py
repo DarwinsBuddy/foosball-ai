@@ -22,7 +22,7 @@ def file_path(string):
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-f", "--file", help="path to the (optional) video file")
-ap.add_argument("-c", "--calibration", action='store_true', help="Calibration mode")
+ap.add_argument("-c", "--calibration", choices=['ball', 'goal', 'cam'], help="Calibration mode")
 ap.add_argument("-ci", "--calibrationImagePath", type=dir_path, default=None,
                 help="Images path for calibration mode. If not given switching to live calibration")
 ap.add_argument("-cv", "--calibrationVideo", type=file_path, default=None,
@@ -31,7 +31,6 @@ ap.add_argument("-cs", "--calibrationSampleSize", type=int, default=50,
                 help="Sample size for calibration mode. If not given all detected image markers will be taken into "
                      "account")
 ap.add_argument("-cam", "--cameraId", type=int, default=None, help="Camera id to be used")
-ap.add_argument("-cc", "--colorCalibration", choices=['ball', 'all'], help="Color calibration mode")
 ap.add_argument("-ba", "--ball", choices=['orange', 'yellow'], default='orange', help="Pre-configured ball color bounds")
 ap.add_argument("-v", "--verbose", action='store_true', help="Verbose")
 ap.add_argument("-o", "--off", action='store_true', help="Disable ai")
@@ -87,7 +86,7 @@ if __name__ == '__main__':
 
         signal.signal(signal.SIGINT, signal_handler)
         ai.process_video()
-    elif kwargs.get('calibration'):
+    elif kwargs.get('calibration') == 'cam':
         calibrate_camera(camera_id=kwargs.get('cameraId'), calibration_video_path=kwargs.get('calibrationVideo'),
                          calibration_images_path=kwargs.get('calibrationImagePath'), headless=False,
                          sample_size=kwargs.get('calibrationSampleSize'))

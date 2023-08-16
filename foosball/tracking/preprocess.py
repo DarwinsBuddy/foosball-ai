@@ -2,9 +2,11 @@ from enum import Enum
 
 import cv2
 import numpy as np
+import pypeln as pl
 
+from .colordetection import detect_goals
 from ..arUcos import calibration, Aruco
-from ..tracking.models import Frame, PreprocessResult, Point, Rect
+from ..tracking.models import Frame, PreprocessResult, Point, Rect, GoalConfig
 
 TEXT_SCALE = 0.8
 TEXT_COLOR = (0, 255, 0)
@@ -30,7 +32,8 @@ def pad_rect(rectangle: Rect, xpad: int, ypad: int) -> Rect:
 
 
 class PreProcessor:
-    def __init__(self, headless=True, mask=None, used_markers=None, redetect_markers_frames: int = 60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
+    def __init__(self, goal_config: GoalConfig, headless=True, mask=None, used_markers=None,
+                 redetect_markers_frames: int = 60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
                  aruco_params=cv2.aruco.DetectorParameters(), xpad: int = 50, ypad: int = 50, **kwargs):
         self.redetect_markers_frames = redetect_markers_frames
         if used_markers is None:
@@ -40,16 +43,27 @@ class PreProcessor:
         self.mask = mask
         self.xpad = xpad
         self.ypad = ypad
+        self.goal_config = goal_config
         self.kwargs = kwargs
         self.detector, _ = calibration.init_aruco_detector(aruco_dictionary, aruco_params)
         self.markers = []
         self.homography_matrix = None
         self.frames_since_last_marker_detection = 0
-        # self.out = pl.process.IterableQueue()
+        self.goals = None
+        self.calibration = kwargs.get('calibration')
+        self.goals_calibration = self.calibration == "goal"
+        self.calibration_out = pl.process.IterableQueue() if self.goals_calibration else None
+        self.config_in = pl.process.IterableQueue() if self.goals_calibration else None
+
+
+    def config_input(self, config: GoalConfig) -> None:
+        if self.goals_calibration:
+            self.config_in.put_nowait(config)
 
     def stop(self) -> None:
-        # self.out.stop()
-        pass
+        if self.goals_calibration:
+            self.config_in.stop()
+            self.calibration_out.stop()
 
     def detect_markers(self, frame: Frame) -> list[Aruco]:
         img_gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
@@ -62,8 +76,12 @@ class PreProcessor:
         return frame if self.mask is None else cv2.bitwise_and(frame, frame, mask=self.mask)
 
     def process(self, frame: Frame) -> PreprocessResult:
-        info = [(f'? Markers', f'{len(self.markers)}')]
-        if self.frames_since_last_marker_detection == 0 or len(self.markers) == 0:
+        if self.goals_calibration:
+            self.goal_config = self.config_in.get_nowait()
+
+        trigger_marker_detection = self.frames_since_last_marker_detection == 0 or len(self.markers) == 0
+        info = [(f'{"? " if trigger_marker_detection else ""}Markers', f'{len(self.markers)}')]
+        if trigger_marker_detection:
             # detect markers
             markers = self.detect_markers(frame)
             # check if there are exactly 4 markers present
@@ -76,10 +94,20 @@ class PreProcessor:
         if len(self.markers) == 4:
             # crop and warp
             preprocessed, self.homography_matrix = self.four_point_transform(frame, self.markers)
+            if trigger_marker_detection:
+                # detect goals anew
+                goals_detection_result = detect_goals(preprocessed, self.goal_config)
+                if self.goals_calibration:
+                    self.calibration_out.put_nowait(goals_detection_result.frame)
+                self.goals = goals_detection_result.goals
+                info.append(['#GOALS', f'{self.goals}'])
+                # TODO: render goals as rectangles into frame
+                # TODO: add another pipeline step to decide if a goal has been shot or not
+                # TODO: distinguish between red or blue goal (instead of left and right)
         else:
             preprocessed = self.mask_frame(frame)
 
-        return PreprocessResult(frame, preprocessed, self.homography_matrix, info)
+        return PreprocessResult(frame, preprocessed, self.homography_matrix, self.goals, info)
 
     @staticmethod
     def corners2pt(corners) -> [int, int]:
@@ -87,7 +115,6 @@ class PreProcessor:
         c_x = int(moments["m10"] / moments["m00"])
         c_y = int(moments["m01"] / moments["m00"])
         return [c_x, c_y]
-
 
     @staticmethod
     def order_points(pts: np.ndarray) -> np.ndarray:

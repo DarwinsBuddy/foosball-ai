@@ -4,8 +4,8 @@ from queue import Empty
 import pypeln as pl
 
 from .colordetection import detect_ball
-from .models import TrackResult, Track, BallConfig, Info, Blob, PreprocessResult
-from .preprocess import generate_projection, WarpMode
+from .models import TrackResult, Track, BallConfig, Info, Blob, PreprocessResult, Goals
+from .preprocess import WarpMode, project_blob
 
 
 def log(result: TrackResult) -> None:
@@ -14,11 +14,11 @@ def log(result: TrackResult) -> None:
 
 class Tracker:
 
-    def __init__(self, ball_bounds: BallConfig, off=False, verbose=False, **kwargs):
+    def __init__(self, ball_bounds: BallConfig, off=False, **kwargs):
         self.kwargs = kwargs
         self.ball_track = Track(maxlen=kwargs.get('buffer'))
         self.off = off
-        self.verbose = verbose
+        self.verbose = kwargs.get("verbose")
         self.calibration = kwargs.get("calibration")
         # define the lower_ball and upper_ball boundaries of the
         # ball in the HSV color space, then initialize the
@@ -65,8 +65,9 @@ class Tracker:
         if self.ball_calibration:
             self.bounds_in.put_nowait(config)
 
-    def track(self, preprocess_result: PreprocessResult, debug=False) -> TrackResult:
+    def track(self, preprocess_result: PreprocessResult) -> TrackResult:
         ball = None
+        goals = preprocess_result.goals
         ball_track = None
         if not self.off:
             if self.ball_calibration:
@@ -77,19 +78,20 @@ class Tracker:
             f = preprocess_result.preprocessed if preprocess_result.preprocessed is not None else preprocess_result.original
             ball_detection_result = detect_ball(f, self.ball_bounds)
             ball = ball_detection_result.ball
-
             # do not forget to project detected points onto the original frame on rendering
-            if not debug:
+            if not self.verbose:
                 if ball is not None and preprocess_result.homography_matrix is not None:
-                    dewarp = generate_projection(preprocess_result.homography_matrix, WarpMode.DEWARP)
-                    x0, y0 = dewarp((ball.bbox[0], ball.bbox[1]))
-                    x1, y1 = dewarp((ball.bbox[0] + ball.bbox[2], ball.bbox[1] + ball.bbox[3]))
-                    ball = Blob(dewarp(ball.center), (x0, y0, x1-x0, y1-y0))
+                    ball = project_blob(ball, preprocess_result.homography_matrix, WarpMode.DEWARP)
+                if goals is not None and preprocess_result.homography_matrix is not None:
+                    goals = Goals(
+                        left=project_blob(goals.left, preprocess_result.homography_matrix, WarpMode.DEWARP),
+                        right=project_blob(goals.right, preprocess_result.homography_matrix, WarpMode.DEWARP)
+                    )
             if self.ball_calibration:
                 self.calibration_out.put_nowait(ball_detection_result.frame)
             ball_track = self.update_ball_track(ball)
         info = preprocess_result.info + self.get_info(ball_track)
-        if not debug:
-            return TrackResult(preprocess_result.original, ball_track, ball, info)
+        if not self.verbose:
+            return TrackResult(preprocess_result.original, goals, ball_track, ball, info)
         else:
-            return TrackResult(preprocess_result.preprocessed, ball_track, ball, info)
+            return TrackResult(preprocess_result.preprocessed, goals, ball_track, ball, info)

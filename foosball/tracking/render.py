@@ -4,16 +4,20 @@ import numpy as np
 
 from . import FrameDimensions
 from .colordetection import Blob
-from .models import TrackResult, Info
+from .models import TrackResult, Info, Goal
 
 TEXT_SCALE = 1.2
+
+# BGR
 GREEN = (0, 255, 0)
 GRAY = (100, 100, 100)
+WHITE = (0, 0, 0)
+RED = (0, 0, 255)
 ORANGE = (0, 143, 252)
 
 
 def text_color(key, value):
-    if value == "off" or key.startswith("!"):
+    if value == "off" or value == "fail" or key.startswith("!"):
         return GRAY
     elif key.startswith("?"):
         return ORANGE
@@ -23,7 +27,7 @@ def text_color(key, value):
 
 def r_info(frame, dims: FrameDimensions, info: Info) -> None:
     # loop over the info tuples and draw them on our frame
-    height = int(len(info) / 2) * 25
+    height = int(len(info) / 2) * 30
     cv2.rectangle(frame, (0, dims.scaled[1] - height), (dims.scaled[0], dims.scaled[1]), (0, 0, 0), -1)
     for (i, (k, v)) in enumerate(info):
         txt = "{}: {}".format(k, v)
@@ -46,8 +50,13 @@ def r_ball(frame, b: Blob, scale) -> None:
         # draw the circle and centroid on the frame,
         # then update the list of tracked points
         # cv2.circle(frame, center, 5, (0, 0, 255), -1)
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 1)
+        cv2.rectangle(frame, (x, y), (x + w, y + h), GREEN, 1)
         # cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
+
+
+def r_goal(frame, g: Goal) -> None:
+    [x, y, w, h] = g.bbox
+    cv2.rectangle(frame, (x, y), (x + w, y + h), GREEN, 2)
 
 
 def r_track(frame, ball_track, scale) -> None:
@@ -80,13 +89,16 @@ class Renderer:
     def render(self, track_result: TrackResult) -> TrackResult:
         f = track_result.frame
         ball = track_result.ball
+        goals = track_result.goals
         track = track_result.ball_track
         info = track_result.info
 
         try:
             if ball is not None:
                 r_ball(f, ball, self.dims.scale)
-
+            if goals is not None:
+                r_goal(f, goals.left)
+                r_goal(f, goals.right)
             r_track(f, track, self.dims.scale)
             if not self.headless:
                 r_info(f, self.dims, info)
@@ -94,5 +106,4 @@ class Renderer:
             self.out.put_nowait(f)
         except Exception as e:
             print("Error in renderer ", e)
-        return TrackResult(f, track_result.ball_track, track_result.ball,
-                           track_result.info)
+        return TrackResult(f, goals, track, ball, info)

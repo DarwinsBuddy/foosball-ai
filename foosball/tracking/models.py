@@ -50,7 +50,7 @@ class BallDetectionResult:
     frame: np.array
 
 
-Goal = Rect
+Goal = Blob
 
 
 @dataclass
@@ -91,6 +91,7 @@ Info = list[tuple[str, str]]
 @dataclass
 class TrackResult:
     frame: Frame
+    goals: Optional[Goals]
     ball_track: Track
     ball: Blob
     info: Info

@@ -64,10 +64,6 @@ def slider_label(rgb, bound):
     return f"{rgb} ({bound})"
 
 
-def on_button(state, data):
-    print(f"BUTTON: {state} - {data}", end="\n\n\n")
-
-
 def add_config_input(calibration, config):
     if calibration == GOAL:
         add_goals_config_input(config)

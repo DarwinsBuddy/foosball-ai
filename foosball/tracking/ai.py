@@ -16,12 +16,11 @@ class AI:
         self.cap = cap
         self.display = dis
         self.calibration = self.kwargs.get('calibration')
-        self.verbose = self.kwargs.get('verbose')
         self._stopped = False
         self.ball_config = get_ball_config(self.kwargs.get('ball'))
         self.goals_config = get_goal_config()
         if self.calibration is not None:
-            self.calibration_bounds = lambda: self.ball_config if self.calibration == 'ball' else self.goals_config
+            self.calibration_config = lambda: self.ball_config if self.calibration == 'ball' else self.goals_config
         self.detection_frame = None
 
         original = self.cap.dim()
@@ -34,17 +33,17 @@ class AI:
         if self.calibration is not None:
             self.calibration_display = OpenCVDisplay(self.calibration, pos='br')
             # init slider window
-            add_config_input(self.calibration, self.calibration_bounds())
+            add_config_input(self.calibration, self.calibration_config())
 
     def stop(self):
         self._stopped = True
 
     def process_video(self):
         def reset_cb():
-            reset_config(self.calibration, self.calibration_bounds())
+            reset_config(self.calibration, self.calibration_config())
 
         def store_cb():
-            store_config(self.calibration, self.calibration_bounds())
+            store_config(self.calibration, self.calibration_config())
 
         self.tracking.start()
 
@@ -87,7 +86,7 @@ class AI:
             self.calibration_display.stop()
 
     def render_calibration(self):
-        if self.calibration:
+        if self.calibration is not None:
             try:
                 self.detection_frame = self.tracking.calibration_output.get_nowait()
                 self.calibration_display.show(self.detection_frame)

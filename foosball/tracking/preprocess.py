@@ -6,7 +6,7 @@ import pypeln as pl
 
 from .colordetection import detect_goals
 from ..arUcos import calibration, Aruco
-from ..tracking.models import Frame, PreprocessResult, Point, Rect, GoalConfig
+from ..tracking.models import Frame, PreprocessResult, Point, Rect, GoalConfig, Blob
 
 TEXT_SCALE = 0.8
 TEXT_COLOR = (0, 255, 0)
@@ -34,8 +34,8 @@ def pad_rect(rectangle: Rect, xpad: int, ypad: int) -> Rect:
 class PreProcessor:
     def __init__(self, goal_config: GoalConfig, headless=True, mask=None, used_markers=None,
                  redetect_markers_frames: int = 60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
-                 aruco_params=cv2.aruco.DetectorParameters(), xpad: int = 50, ypad: int = 50, **kwargs):
-        self.redetect_markers_frames = redetect_markers_frames
+                 aruco_params=cv2.aruco.DetectorParameters(), xpad: int = 50, ypad: int = 20, **kwargs):
+        self.redetect_markers_frame_threshold = redetect_markers_frames
         if used_markers is None:
             used_markers = [0, 1, 2, 3, 4]
         self.used_markers = used_markers
@@ -51,10 +51,10 @@ class PreProcessor:
         self.frames_since_last_marker_detection = 0
         self.goals = None
         self.calibration = kwargs.get('calibration')
+        self.verbose = kwargs.get('verbose')
         self.goals_calibration = self.calibration == "goal"
         self.calibration_out = pl.process.IterableQueue() if self.goals_calibration else None
         self.config_in = pl.process.IterableQueue() if self.goals_calibration else None
-
 
     def config_input(self, config: GoalConfig) -> None:
         if self.goals_calibration:
@@ -90,7 +90,7 @@ class PreProcessor:
             # logging.debug(f"markers {[list(m.id)[0] for m in markers]}")
             if len(markers) == 4:
                 self.markers = markers
-        self.frames_since_last_marker_detection = (self.frames_since_last_marker_detection + 1) % self.redetect_markers_frames
+        self.frames_since_last_marker_detection = (self.frames_since_last_marker_detection + 1) % self.redetect_markers_frame_threshold
         if len(self.markers) == 4:
             # crop and warp
             preprocessed, self.homography_matrix = self.four_point_transform(frame, self.markers)
@@ -100,10 +100,9 @@ class PreProcessor:
                 if self.goals_calibration:
                     self.calibration_out.put_nowait(goals_detection_result.frame)
                 self.goals = goals_detection_result.goals
-                info.append(['#GOALS', f'{self.goals}'])
-                # TODO: render goals as rectangles into frame
                 # TODO: add another pipeline step to decide if a goal has been shot or not
                 # TODO: distinguish between red or blue goal (instead of left and right)
+            info.append(['goals', f'{"detected" if self.goals is not None else "fail"}'])
         else:
             preprocessed = self.mask_frame(frame)
 
@@ -185,14 +184,16 @@ class PreProcessor:
         return warped, homography_matrix
 
 
-def generate_projection(homography_matrix, mode: WarpMode):
+def project_point(pt: Point, homography_matrix: np.array, mode: WarpMode):
     H = homography_matrix if mode == WarpMode.WARP else np.linalg.inv(homography_matrix)
+    src = np.array([pt[0], pt[1], 1])  # add a dimension to convert into homogenous coordinates
+    src = src.reshape(3, 1)  # reshape to line vector for proper matrix multiplication
+    dest = np.dot(H, src)  # warp point (with potential perspective projection)
+    dest = dest / dest[2]  # project back onto cartesian coordinates
+    return int(dest[0]), int(dest[1])
 
-    def _warp_func(src_pt):
-        src = np.array([src_pt[0], src_pt[1], 1])  # add a dimension to convert into homogenous coordinates
-        src = src.reshape(3, 1)  # reshape to line vector for proper matrix multiplication
-        dest = np.dot(H, src)  # warp point (with potential perspective projection)
-        dest = dest / dest[2]  # project back onto cartesian coordinates
-        return int(dest[0]), int(dest[1])
 
-    return _warp_func
+def project_blob(blob: Blob, homography_matrix: np.array, mode: WarpMode):
+    x0, y0 = project_point((blob.bbox[0], blob.bbox[1]), homography_matrix, mode)
+    x1, y1 = project_point((blob.bbox[0] + blob.bbox[2], blob.bbox[1] + blob.bbox[3]), homography_matrix, mode)
+    return Blob(project_point(blob.center, homography_matrix, mode), (x0, y0, x1 - x0, y1 - y0))

@@ -65,8 +65,7 @@ class Tracking(Pipeline):
         self.tracker.stop()
         self.renderer.stop()
 
-    def __init__(self, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, verbose=False,
-                 headless=False,
+    def __init__(self, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, headless=False,
                  off=False, **kwargs):
         super().__init__()
         self.frame_queue = pl.process.IterableQueue()
@@ -76,7 +75,7 @@ class Tracking(Pipeline):
         mask = generate_frame_mask(width, height)
 
         self.preprocessor = PreProcessor(goal_config, mask=mask, headless=headless, **kwargs)
-        self.tracker = Tracker(ball_config, off=off, verbose=verbose, **kwargs)
+        self.tracker = Tracker(ball_config, off=off, **kwargs)
         self.renderer = Renderer(dims, headless=headless, **kwargs)
         self.build()
 

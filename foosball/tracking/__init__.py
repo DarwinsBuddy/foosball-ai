@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 from pypeln import BaseStage
 
+from .analyze import Analyzer
 from .models import Mask, FrameDimensions, BallConfig, ScaleDirection, RGB, HSV, rgb2hsv, GoalConfig
 from .preprocess import PreProcessor
 from .render import Renderer
@@ -48,10 +49,6 @@ def generate_frame_mask(width, height) -> Mask:
     bar_color = 255
     bg = 0
     mask = np.full((height, width), bg, np.uint8)
-    # TODO: instead of doing this approx. calculations
-    #       scale the whole stream down to a standardized size
-    #       and fix the frame according to dewarped image's recognized boundaries
-    #       don't forget to scale renderings accordingly (if original image is shown)
     start = (int(width / 12), int(height / 20))
     end = (int(width / 1.2), int(height / 1.2))
     frame_mask = cv2.rectangle(mask, start, end, bar_color, -1)
@@ -65,8 +62,7 @@ class Tracking(Pipeline):
         self.tracker.stop()
         self.renderer.stop()
 
-    def __init__(self, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, headless=False,
-                 off=False, **kwargs):
+    def __init__(self, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, headless=False, **kwargs):
         super().__init__()
         self.frame_queue = pl.process.IterableQueue()
         self.calibration = kwargs.get('calibration')
@@ -75,7 +71,8 @@ class Tracking(Pipeline):
         mask = generate_frame_mask(width, height)
 
         self.preprocessor = PreProcessor(goal_config, mask=mask, headless=headless, **kwargs)
-        self.tracker = Tracker(ball_config, off=off, **kwargs)
+        self.tracker = Tracker(ball_config, **kwargs)
+        self.analyzer = Analyzer(**kwargs)
         self.renderer = Renderer(dims, headless=headless, **kwargs)
         self.build()
 
@@ -101,6 +98,7 @@ class Tracking(Pipeline):
                 self.frame_queue
                 | pl.process.map(self.preprocessor.process)
                 | pl.process.map(self.tracker.track)
+                | pl.process.map(self.analyzer.analyze)
                 | pl.process.map(self.renderer.render)
                 # | pl.process.each(self.log)
                 | pl.thread.filter(lambda x: False)

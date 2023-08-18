@@ -35,7 +35,7 @@ ap.add_argument("-ba", "--ball", choices=['orange', 'yellow'], default='yellow',
 ap.add_argument("-v", "--verbose", action='store_true', help="Verbose")
 ap.add_argument("-o", "--off", action='store_true', help="Disable ai")
 ap.add_argument("-q", "--headless", action='store_true', help="Disable visualizations")
-ap.add_argument("-b", "--buffer", type=int, default=64, help="max track buffer size")
+ap.add_argument("-b", "--buffer", type=int, default=16, help="max track buffer size")
 ap.add_argument("-xp", "--xpad", type=int, default=50, help="Horizontal padding applied to ROI detected by aruco markers")
 ap.add_argument("-yp", "--ypad", type=int, default=20, help="Vertical padding applied to ROI detected by aruco markers")
 ap.add_argument("-s", "--scale", type=float, default=0.4, help="Scale stream")

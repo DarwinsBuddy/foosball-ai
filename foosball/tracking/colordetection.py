@@ -118,7 +118,6 @@ def detect_goal_blobs(img) -> list[Goal] | None:
         # find the largest contour in the mask, then use
         # it to compute the minimum enclosing circle and
         # centroid
-        # TODO: check if this is sorted correctly (asc vs. desc)
         largest_contours = sorted(cnts, key=cv2.contourArea, reverse=True)[:2]
         if len(largest_contours) != 2:
             logging.error("Could not detect 2 goals")

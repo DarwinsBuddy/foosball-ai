@@ -14,10 +14,10 @@ def log(result: TrackResult) -> None:
 
 class Tracker:
 
-    def __init__(self, ball_bounds: BallConfig, off=False, **kwargs):
+    def __init__(self, ball_bounds: BallConfig, **kwargs):
         self.kwargs = kwargs
         self.ball_track = Track(maxlen=kwargs.get('buffer'))
-        self.off = off
+        self.off = kwargs.get('off')
         self.verbose = kwargs.get("verbose")
         self.calibration = kwargs.get("calibration")
         # define the lower_ball and upper_ball boundaries of the
@@ -45,7 +45,7 @@ class Tracker:
 
     def get_info(self, ball_track: Track) -> Info:
         info = [
-            ("Track length", f"{sum([1 for p in ball_track if p is not None])}"),
+            ("Track length", f"{sum([1 for p in ball_track or [] if p is not None])}"),
             ("Calibration", f"{self.calibration if self.calibration is not None else 'off'}"),
             ("Tracker", f"{'off' if self.off else 'on'}")
         ]

@@ -26,11 +26,24 @@ class ScaleDirection(Enum):
     UP = 1
     DOWN = 2
 
+class Team(Enum):
+    RED = 0
+    BLUE = 1
 
 Point = [int, int]
 Rect = (Point, Point, Point, Point)
+BBox = [int, int, int, int]  # x y width height
 
+@dataclass
+class Score:
+    blue: int = 0
+    red: int = 0
 
+    def inc(self, team: Team):
+        if team == Team.BLUE:
+            self.blue += 1
+        elif team == Team.RED:
+            self.red += 1
 @dataclass
 class FrameDimensions:
     original: [int, int]
@@ -41,7 +54,11 @@ class FrameDimensions:
 @dataclass
 class Blob:
     center: Point
-    bbox: [int, int, int, int]  # x y width height
+    bbox: BBox
+
+    def area(self):
+        [_, _, w, h] = self.bbox
+        return w * h
 
 
 @dataclass
@@ -96,6 +113,14 @@ class TrackResult:
     ball: Blob
     info: Info
 
+@dataclass
+class AnalyzeResult:
+    frame: Frame
+    score: Score
+    goals: Optional[Goals]
+    ball_track: Track
+    ball: Blob
+    info: Info
 
 @dataclass
 class PreprocessResult:

@@ -1,6 +1,6 @@
 import cv2
 
-from foosball.tracking.models import FrameDimensions, ScaleDirection
+from foosball.tracking.models import FrameDimensions, ScaleDirection, Point, BBox
 
 
 def scale_point(pt, dimensions: FrameDimensions, scaling: ScaleDirection):
@@ -12,3 +12,8 @@ def scale_point(pt, dimensions: FrameDimensions, scaling: ScaleDirection):
 
 def scale(frame, dimensions: FrameDimensions, scaling: ScaleDirection):
     return cv2.resize(frame, dimensions.scaled if scaling == ScaleDirection.DOWN else dimensions.original)
+
+
+def contains(bbox: BBox, pt: Point) -> bool:
+    [x, y, w, h] = bbox
+    return x < pt[0] < x + w and y < pt[1] < y + h

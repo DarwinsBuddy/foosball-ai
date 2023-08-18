@@ -1,10 +1,10 @@
 import cv2
-import pypeln as pl
 import numpy as np
+import pypeln as pl
 
 from . import FrameDimensions
 from .colordetection import Blob
-from .models import TrackResult, Info, Goal
+from .models import Info, Goal, AnalyzeResult, Score
 
 TEXT_SCALE = 1.2
 
@@ -36,6 +36,10 @@ def r_info(frame, dims: FrameDimensions, info: Info) -> None:
         r_text(frame, txt, x, y - int(TEXT_SCALE * 20), dims.scale, text_color(txt, v))
 
 
+def r_score(frame, score: Score, dims: FrameDimensions) -> None:
+    r_text(frame, f"{score.blue} : {score.red}", int(dims.scaled[0] / 2), 30, dims.scale, GREEN)
+
+
 def r_text(frame, text: str, x: int, y: int, scale: float, color=GREEN):
     cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale * TEXT_SCALE, color, 1)
 
@@ -61,7 +65,7 @@ def r_goal(frame, g: Goal) -> None:
 
 def r_track(frame, ball_track, scale) -> None:
     # loop over the set of tracked points
-    for i in range(1, len(ball_track)):
+    for i in range(1, len(ball_track or [])):
         # if either of the tracked points are None, ignore
         # them
         if ball_track[i - 1] is None or ball_track[i] is None:
@@ -86,12 +90,13 @@ class Renderer:
     def stop(self) -> None:
         self.out.stop()
 
-    def render(self, track_result: TrackResult) -> TrackResult:
-        f = track_result.frame
-        ball = track_result.ball
-        goals = track_result.goals
-        track = track_result.ball_track
-        info = track_result.info
+    def render(self, analyze_result: AnalyzeResult) -> AnalyzeResult:
+        f = analyze_result.frame
+        ball = analyze_result.ball
+        goals = analyze_result.goals
+        track = analyze_result.ball_track
+        info = analyze_result.info
+        score = analyze_result.score
 
         try:
             if ball is not None:
@@ -100,10 +105,12 @@ class Renderer:
                 r_goal(f, goals.left)
                 r_goal(f, goals.right)
             r_track(f, track, self.dims.scale)
+            r_score(f, score, self.dims)
             if not self.headless:
                 r_info(f, self.dims, info)
-            print(" - ".join([f"{label}: {text}" for label, text in info]) + (" " * 80), end="\r")
+            else:
+                print(" - ".join([f"{label}: {text}" for label, text in info]) + (" " * 50), end="\r")
             self.out.put_nowait(f)
         except Exception as e:
             print("Error in renderer ", e)
-        return TrackResult(f, goals, track, ball, info)
+        return analyze_result

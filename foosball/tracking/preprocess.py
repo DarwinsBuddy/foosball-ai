@@ -6,7 +6,7 @@ import pypeln as pl
 
 from .colordetection import detect_goals
 from ..arUcos import calibration, Aruco
-from ..tracking.models import Frame, PreprocessResult, Point, Rect, GoalConfig, Blob
+from ..tracking.models import Frame, PreprocessResult, Point, Rect, GoalConfig, Blob, Goals
 
 TEXT_SCALE = 0.8
 TEXT_COLOR = (0, 255, 0)
@@ -34,7 +34,9 @@ def pad_rect(rectangle: Rect, xpad: int, ypad: int) -> Rect:
 class PreProcessor:
     def __init__(self, goal_config: GoalConfig, headless=True, mask=None, used_markers=None,
                  redetect_markers_frames: int = 60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
-                 aruco_params=cv2.aruco.DetectorParameters(), xpad: int = 50, ypad: int = 20, **kwargs):
+                 aruco_params=cv2.aruco.DetectorParameters(), xpad: int = 50, ypad: int = 20,
+                 goal_change_threshold: float = 0.8, **kwargs):
+        self.goal_change_threshold = goal_change_threshold
         self.redetect_markers_frame_threshold = redetect_markers_frames
         if used_markers is None:
             used_markers = [0, 1, 2, 3, 4]
@@ -81,30 +83,38 @@ class PreProcessor:
 
         trigger_marker_detection = self.frames_since_last_marker_detection == 0 or len(self.markers) == 0
         info = [(f'{"? " if trigger_marker_detection else ""}Markers', f'{len(self.markers)}')]
-        if trigger_marker_detection:
-            # detect markers
-            markers = self.detect_markers(frame)
-            # check if there are exactly 4 markers present
-            markers = [m for m in markers if m.id in self.used_markers]
-            info = [(f'{"! " if len(markers) != 4 else ""}Markers', f'{len(markers)}')]
-            # logging.debug(f"markers {[list(m.id)[0] for m in markers]}")
-            if len(markers) == 4:
-                self.markers = markers
-        self.frames_since_last_marker_detection = (self.frames_since_last_marker_detection + 1) % self.redetect_markers_frame_threshold
-        if len(self.markers) == 4:
-            # crop and warp
-            preprocessed, self.homography_matrix = self.four_point_transform(frame, self.markers)
+        preprocessed = frame
+        if not self.kwargs.get('off'):
             if trigger_marker_detection:
-                # detect goals anew
-                goals_detection_result = detect_goals(preprocessed, self.goal_config)
-                if self.goals_calibration:
-                    self.calibration_out.put_nowait(goals_detection_result.frame)
-                self.goals = goals_detection_result.goals
-                # TODO: add another pipeline step to decide if a goal has been shot or not
-                # TODO: distinguish between red or blue goal (instead of left and right)
-            info.append(['goals', f'{"detected" if self.goals is not None else "fail"}'])
-        else:
-            preprocessed = self.mask_frame(frame)
+                # detect markers
+                markers = self.detect_markers(frame)
+                # check if there are exactly 4 markers present
+                markers = [m for m in markers if m.id in self.used_markers]
+                info = [(f'{"! " if len(markers) != 4 else ""}Markers', f'{len(markers)}')]
+                # logging.debug(f"markers {[list(m.id)[0] for m in markers]}")
+                if len(markers) == 4:
+                    self.markers = markers
+            self.frames_since_last_marker_detection = (
+                                                              self.frames_since_last_marker_detection + 1) % self.redetect_markers_frame_threshold
+            if len(self.markers) == 4:
+                # crop and warp
+                preprocessed, self.homography_matrix = self.four_point_transform(frame, self.markers)
+                if trigger_marker_detection:
+                    # detect goals anew
+                    goals_detection_result = detect_goals(preprocessed, self.goal_config)
+                    if self.goals_calibration:
+                        self.calibration_out.put_nowait(goals_detection_result.frame)
+                    # check if goals are not significantly smaller than before
+                    new_goals = goals_detection_result.goals
+                    self.goals = Goals(
+                        left=self.goals.left if self.goals is not None and new_goals.left.area() < self.goals.left.area() * self.goal_change_threshold else new_goals.left,
+                        right=self.goals.right if self.goals is not None and new_goals.right.area() < self.goals.right.area() * self.goal_change_threshold else new_goals.right
+                    )
+                    # TODO: Improve tracker detection (seemingly goal cannot be tracked always, cause ball is not detected inside the goal)
+                    # TODO: distinguish between red or blue goal (instead of left and right)
+                info.append(['goals', f'{"detected" if self.goals is not None else "fail"}'])
+            else:
+                preprocessed = self.mask_frame(frame)
 
         return PreprocessResult(frame, preprocessed, self.homography_matrix, self.goals, info)
 

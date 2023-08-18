@@ -9,7 +9,8 @@ from . import FrameDimensions
 from .colordetection import Blob
 from .models import Info, Goal, AnalyzeResult, Score
 
-TEXT_SCALE = 1.2
+TEXT_SCALE = 0.8
+FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 # BGR
 GREEN = (0, 255, 0)
@@ -40,11 +41,17 @@ def r_info(frame, dims: FrameDimensions, info: Info) -> None:
 
 
 def r_score(frame, score: Score, dims: FrameDimensions) -> None:
-    r_text(frame, f"{score.blue} : {score.red}", int(dims.scaled[0] / 2), 30, dims.scale, GREEN)
+    text = f"{score.blue} : {score.red}"
+    textsize = cv2.getTextSize(text, FONT, 1, 2)[0]
+    p = 10
+    x = int((frame.shape[1] - textsize[0]) / 2)
+    y = 0
+    cv2.rectangle(frame, (x, y), (x+textsize[0]+p, y+textsize[1]+p), (0, 0, 0), -1)
+    r_text(frame, text,  x + int(p/2), y + textsize[1] + int(p/2), dims.scale, GREEN, 2)
 
 
-def r_text(frame, text: str, x: int, y: int, scale: float, color=GREEN):
-    cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale * TEXT_SCALE, color, 1)
+def r_text(frame, text: str, x: int, y: int, scale: float, color=GREEN, size: int = 0):
+    cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, TEXT_SCALE - scale + (size * 0.2), color, 1)
 
 
 def r_ball(frame, b: Blob, scale) -> None:

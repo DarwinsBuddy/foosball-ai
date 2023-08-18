@@ -1,3 +1,5 @@
+import logging
+
 import cv2
 from imutils.video import VideoStream
 
@@ -11,7 +13,7 @@ class GearCapture:
         # to the webcam
         if video is None:
             self.cap = VideoStream(src=1).start()
-        # otherwise, grab a reference to the video file
+            # otherwise, grab a reference to the video file
         else:
             options = {
                 # "CAP_PROP_FRAME_WIDTH": 800,  # resolution 320x240
@@ -19,6 +21,7 @@ class GearCapture:
                 # "CAP_PROP_FPS": 60,  # framerate 60fps
             }
             self.cap = VideoGear(source=video, logging=False, **options).start()
+            logging.info(f"framerate = {self.cap.framerate}")
 
         self.is_file_capture = video is not None
 

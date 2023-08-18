@@ -37,7 +37,7 @@ class PreProcessor:
     def __init__(self, goal_config: GoalConfig, headless=True, mask=None, used_markers=None,
                  redetect_markers_frames: int = 60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
                  aruco_params=cv2.aruco.DetectorParameters(), xpad: int = 50, ypad: int = 20,
-                 goal_change_threshold: float = 0.8, **kwargs):
+                 goal_change_threshold: float = 0.95, **kwargs):
         self.goal_change_threshold = goal_change_threshold
         self.redetect_markers_frame_threshold = redetect_markers_frames
         if used_markers is None:
@@ -109,10 +109,15 @@ class PreProcessor:
                             self.calibration_out.put_nowait(goals_detection_result.frame)
                         # check if goals are not significantly smaller than before
                         new_goals = goals_detection_result.goals
-                        self.goals = Goals(
-                            left=self.goals.left if self.goals is not None and new_goals.left.area() < self.goals.left.area() * self.goal_change_threshold else new_goals.left,
-                            right=self.goals.right if self.goals is not None and new_goals.right.area() < self.goals.right.area() * self.goal_change_threshold else new_goals.right
-                        )
+                        if self.goals is None:
+                            self.goals = new_goals
+                        elif new_goals is not None:
+                            left_change = new_goals.left.area() / self.goals.left.area()
+                            right_change = new_goals.right.area() / self.goals.right.area()
+                            self.goals = Goals(
+                                left=self.goals.left if left_change < self.goal_change_threshold else new_goals.left,
+                                right=self.goals.right if right_change < self.goal_change_threshold else new_goals.right
+                            )
                         # TODO: Improve tracker detection (seemingly goal cannot be tracked always, cause ball is not detected inside the goal)
                         # TODO: distinguish between red or blue goal (instead of left and right)
                     info.append(['goals', f'{"detected" if self.goals is not None else "fail"}'])

@@ -1,3 +1,5 @@
+import logging
+import traceback
 from enum import Enum
 
 import cv2
@@ -78,44 +80,47 @@ class PreProcessor:
         return frame if self.mask is None else cv2.bitwise_and(frame, frame, mask=self.mask)
 
     def process(self, frame: Frame) -> PreprocessResult:
-        if self.goals_calibration:
-            self.goal_config = self.config_in.get_nowait()
-
-        trigger_marker_detection = self.frames_since_last_marker_detection == 0 or len(self.markers) == 0
-        info = [(f'{"? " if trigger_marker_detection else ""}Markers', f'{len(self.markers)}')]
         preprocessed = frame
-        if not self.kwargs.get('off'):
-            if trigger_marker_detection:
-                # detect markers
-                markers = self.detect_markers(frame)
-                # check if there are exactly 4 markers present
-                markers = [m for m in markers if m.id in self.used_markers]
-                info = [(f'{"! " if len(markers) != 4 else ""}Markers', f'{len(markers)}')]
-                # logging.debug(f"markers {[list(m.id)[0] for m in markers]}")
-                if len(markers) == 4:
-                    self.markers = markers
-            self.frames_since_last_marker_detection = (
-                                                              self.frames_since_last_marker_detection + 1) % self.redetect_markers_frame_threshold
-            if len(self.markers) == 4:
-                # crop and warp
-                preprocessed, self.homography_matrix = self.four_point_transform(frame, self.markers)
-                if trigger_marker_detection:
-                    # detect goals anew
-                    goals_detection_result = detect_goals(preprocessed, self.goal_config)
-                    if self.goals_calibration:
-                        self.calibration_out.put_nowait(goals_detection_result.frame)
-                    # check if goals are not significantly smaller than before
-                    new_goals = goals_detection_result.goals
-                    self.goals = Goals(
-                        left=self.goals.left if self.goals is not None and new_goals.left.area() < self.goals.left.area() * self.goal_change_threshold else new_goals.left,
-                        right=self.goals.right if self.goals is not None and new_goals.right.area() < self.goals.right.area() * self.goal_change_threshold else new_goals.right
-                    )
-                    # TODO: Improve tracker detection (seemingly goal cannot be tracked always, cause ball is not detected inside the goal)
-                    # TODO: distinguish between red or blue goal (instead of left and right)
-                info.append(['goals', f'{"detected" if self.goals is not None else "fail"}'])
-            else:
-                preprocessed = self.mask_frame(frame)
+        info = []
+        try:
+            if self.goals_calibration:
+                self.goal_config = self.config_in.get_nowait()
 
+            trigger_marker_detection = self.frames_since_last_marker_detection == 0 or len(self.markers) == 0
+            info = [(f'{"? " if trigger_marker_detection else ""}Markers', f'{len(self.markers)}')]
+            if not self.kwargs.get('off'):
+                if trigger_marker_detection:
+                    # detect markers
+                    markers = self.detect_markers(frame)
+                    # check if there are exactly 4 markers present
+                    markers = [m for m in markers if m.id in self.used_markers]
+                    info = [(f'{"! " if len(markers) != 4 else ""}Markers', f'{len(markers)}')]
+                    # logging.debug(f"markers {[list(m.id)[0] for m in markers]}")
+                    if len(markers) == 4:
+                        self.markers = markers
+                self.frames_since_last_marker_detection = (self.frames_since_last_marker_detection + 1) % self.redetect_markers_frame_threshold
+                if len(self.markers) == 4:
+                    # crop and warp
+                    preprocessed, self.homography_matrix = self.four_point_transform(frame, self.markers)
+                    if trigger_marker_detection:
+                        # detect goals anew
+                        goals_detection_result = detect_goals(preprocessed, self.goal_config)
+                        if self.goals_calibration:
+                            self.calibration_out.put_nowait(goals_detection_result.frame)
+                        # check if goals are not significantly smaller than before
+                        new_goals = goals_detection_result.goals
+                        self.goals = Goals(
+                            left=self.goals.left if self.goals is not None and new_goals.left.area() < self.goals.left.area() * self.goal_change_threshold else new_goals.left,
+                            right=self.goals.right if self.goals is not None and new_goals.right.area() < self.goals.right.area() * self.goal_change_threshold else new_goals.right
+                        )
+                        # TODO: Improve tracker detection (seemingly goal cannot be tracked always, cause ball is not detected inside the goal)
+                        # TODO: distinguish between red or blue goal (instead of left and right)
+                    info.append(['goals', f'{"detected" if self.goals is not None else "fail"}'])
+                else:
+                    preprocessed = self.mask_frame(frame)
+        except Exception as e:
+            logging.error(f"Error in preprocess {e}")
+            traceback.print_exc()
         return PreprocessResult(frame, preprocessed, self.homography_matrix, self.goals, info)
 
     @staticmethod

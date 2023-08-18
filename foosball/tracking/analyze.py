@@ -1,3 +1,5 @@
+import logging
+import traceback
 from collections import deque
 from typing import Optional
 
@@ -16,7 +18,7 @@ class Analyzer:
 
     def goal_shot(self, goals: Goals, track: Track) -> Optional[Team]:
         # current track is empty but last track had one single point left
-        if track is not None and len([x for x in track if x is not None]) == 0 and self.last_track is not None and len([x for x in self.last_track if x is not None]) == 1:
+        if len([x for x in track if x is not None]) == 0 and len([x for x in self.last_track if x is not None]) == 1:
             if contains(goals.left.bbox, self.last_track[-1]):
                 return Team.BLUE
             elif contains(goals.right.bbox, self.last_track[-1]):
@@ -30,12 +32,12 @@ class Analyzer:
         frame = track_result.frame
         info = track_result.info
         try:
-
-            team = self.goal_shot(goals, track)
+            team = self.goal_shot(goals, track) if None not in [goals, track, self.last_track] else None
             if team is not None:
                 print(f"GOOOOOOAL!!! {team}", end="\n\n")
             self.score.inc(team)
             self.last_track = track
         except Exception as e:
-            print("Error in analyzer ", e)
+            logging.error("Error in analyzer ", e)
+            traceback.print_exc()
         return AnalyzeResult(score=self.score, ball=ball, goals=goals, frame=frame, info=info, ball_track=track)

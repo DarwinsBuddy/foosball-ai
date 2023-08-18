@@ -1,3 +1,6 @@
+from enum import Enum
+from typing import Callable
+
 import cv2
 import numpy as np
 import yaml
@@ -7,6 +10,16 @@ from foosball.tracking.models import rgb2hsv, hsv2rgb, GoalConfig
 
 GOAL = "goal"
 BALL = "ball"
+
+
+class Key(Enum):
+    UP = 2490368
+    DOWN = 2621440
+    LEFT = 2424832
+    RIGHT = 2555904
+    SPACE = 32
+    DELETE = 3014656
+    ESC = 27
 
 
 class OpenCVDisplay:
@@ -38,23 +51,18 @@ class OpenCVDisplay:
             cv2.imshow(self.name, frame)
 
     @staticmethod
-    def render(reset_cb=None, store_cb=None):
-        return wait(loop=False, interval=1, reset_cb=reset_cb, store_cb=store_cb)
+    def render(callbacks: dict[int, Callable]):
+        return wait(loop=False, interval=1, callbacks=callbacks)
 
 
-def wait(loop=False, interval=0.1, reset_cb=None, store_cb=None):
+def wait(loop=False, interval=0.1, callbacks=None):
+    if callbacks is None:
+        callbacks = {ord('q'): lambda: True}
     while True:
         key = cv2.waitKey(interval) & 0xFF
         # if the expected key is pressed, return
-        if key == ord('q'):
-            return True
-        if key == ord('r') and reset_cb is not None:
-            reset_cb()
-            return False
-        if key == ord('s') and store_cb is not None:
-            store_cb()
-            return False
-
+        if key in callbacks:
+            return callbacks[key]()
         if not loop:
             break
     return False

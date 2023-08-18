@@ -1,4 +1,5 @@
 import logging
+import traceback
 from queue import Empty
 
 import pypeln as pl
@@ -69,28 +70,33 @@ class Tracker:
         ball = None
         goals = preprocess_result.goals
         ball_track = None
-        if not self.off:
-            if self.ball_calibration:
-                try:
-                    self.ball_bounds = self.bounds_in.get_nowait()
-                except Empty:
-                    pass
-            f = preprocess_result.preprocessed if preprocess_result.preprocessed is not None else preprocess_result.original
-            ball_detection_result = detect_ball(f, self.ball_bounds)
-            ball = ball_detection_result.ball
-            # do not forget to project detected points onto the original frame on rendering
-            if not self.verbose:
-                if ball is not None and preprocess_result.homography_matrix is not None:
-                    ball = project_blob(ball, preprocess_result.homography_matrix, WarpMode.DEWARP)
-                if goals is not None and preprocess_result.homography_matrix is not None:
-                    goals = Goals(
-                        left=project_blob(goals.left, preprocess_result.homography_matrix, WarpMode.DEWARP),
-                        right=project_blob(goals.right, preprocess_result.homography_matrix, WarpMode.DEWARP)
-                    )
-            if self.ball_calibration:
-                self.calibration_out.put_nowait(ball_detection_result.frame)
-            ball_track = self.update_ball_track(ball)
-        info = preprocess_result.info + self.get_info(ball_track)
+        info = []
+        try:
+            if not self.off:
+                if self.ball_calibration:
+                    try:
+                        self.ball_bounds = self.bounds_in.get_nowait()
+                    except Empty:
+                        pass
+                f = preprocess_result.preprocessed if preprocess_result.preprocessed is not None else preprocess_result.original
+                ball_detection_result = detect_ball(f, self.ball_bounds)
+                ball = ball_detection_result.ball
+                # do not forget to project detected points onto the original frame on rendering
+                if not self.verbose:
+                    if ball is not None and preprocess_result.homography_matrix is not None:
+                        ball = project_blob(ball, preprocess_result.homography_matrix, WarpMode.DEWARP)
+                    if goals is not None and preprocess_result.homography_matrix is not None:
+                        goals = Goals(
+                            left=project_blob(goals.left, preprocess_result.homography_matrix, WarpMode.DEWARP),
+                            right=project_blob(goals.right, preprocess_result.homography_matrix, WarpMode.DEWARP)
+                        )
+                if self.ball_calibration:
+                    self.calibration_out.put_nowait(ball_detection_result.frame.copy())
+                ball_track = self.update_ball_track(ball)
+            info = preprocess_result.info + self.get_info(ball_track)
+        except Exception as e:
+            logging.error(f"Error in track {e}")
+            traceback.print_exc()
         if not self.verbose:
             return TrackResult(preprocess_result.original, goals, ball_track, ball, info)
         else:

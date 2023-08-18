@@ -1,16 +1,16 @@
 import logging
 
-import pypeln as pl
 import cv2
 import numpy as np
+import pypeln as pl
 from pypeln import BaseStage
 
 from .analyze import Analyzer
-from .models import Mask, FrameDimensions, BallConfig, ScaleDirection, RGB, HSV, rgb2hsv, GoalConfig
+from .models import Mask, FrameDimensions, BallConfig, ScaleDirection, RGB, HSV, rgb2hsv, GoalConfig, Frame
 from .preprocess import PreProcessor
 from .render import Renderer
-from ..pipe import Pipeline
 from .tracker import Tracker
+from ..pipe import Pipeline
 
 
 def dim(frame) -> [int, int]:
@@ -105,5 +105,5 @@ class Tracking(Pipeline):
                 | list
         )
 
-    def track(self, frame) -> None:
+    def track(self, frame: Frame) -> None:
         self.frame_queue.put(frame)

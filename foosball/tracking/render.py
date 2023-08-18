@@ -1,3 +1,6 @@
+import logging
+import traceback
+
 import cv2
 import numpy as np
 import pypeln as pl
@@ -112,5 +115,6 @@ class Renderer:
                 print(" - ".join([f"{label}: {text}" for label, text in info]) + (" " * 50), end="\r")
             self.out.put_nowait(f)
         except Exception as e:
-            print("Error in renderer ", e)
+            logging.error("Error in renderer {e}")
+            traceback.print_exc()
         return analyze_result

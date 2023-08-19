@@ -79,6 +79,7 @@ class Tracker:
                     except Empty:
                         pass
                 f = preprocess_result.preprocessed if preprocess_result.preprocessed is not None else preprocess_result.original
+                # TODO: research this opencl T-API call for moving things into Shared Virtual Memory f = cv2.UMat(f)
                 ball_detection_result = detect_ball(f, self.ball_bounds)
                 ball = ball_detection_result.ball
                 # do not forget to project detected points onto the original frame on rendering

@@ -77,7 +77,7 @@ def filter_gray_range(frame, config: GoalConfig) -> Frame:
 def detect_largest_blob(img) -> Blob | None:
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    cnts = cv2.findContours(gray.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
 
     # only proceed if at least one contour was found
@@ -110,7 +110,7 @@ def detect_goal_blobs(img) -> list[Goal] | None:
     """
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    cnts = cv2.findContours(gray.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
 
     # only proceed if at least one contour was found

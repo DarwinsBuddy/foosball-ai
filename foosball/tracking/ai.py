@@ -1,4 +1,5 @@
 import logging
+import traceback
 from queue import Empty
 
 from imutils.video import FPS
@@ -75,38 +76,42 @@ class AI:
         fps.start()
         f = None
         while not self._stopped:
-            fps.update()
-            process_frame = not self.paused or self.step
-            if process_frame:
-                f = self.cap.next()
-                if f is not None:
-                    f = scale(f, self.dims, ScaleDirection.DOWN)
-            if f is not None:
+            try:
+                fps.update()
+                process_frame = not self.paused or self.step
                 if process_frame:
-                    self.step = False
-                    self.adjust_calibration()
-                    self.tracking.track(f)
-                    try:
-                        f = self.tracking.output.get(block=True)
-                        fps.stop()
-                        frames_per_second = int(fps.fps())
-                        if frames_per_second >= 90:
-                            color = (0, 255, 0)
-                        elif frames_per_second >= 75:
-                            color = (0, 255, 127)
-                        else:
-                            color = (100, 0, 255)
-                        r_text(f, f"FPS: {frames_per_second}", self.dims.scaled[0] - 60, self.dims.scaled[1] - 10,
-                               self.dims.scale, color)
-                    except Empty:
-                        # logging.debug("No new frame")
-                        pass
-                    self.display.show(f)
-                    self.render_calibration()
-                if self.display.render(callbacks=callbacks):
+                    f = self.cap.next()
+                    if f is not None:
+                        f = scale(f, self.dims, ScaleDirection.DOWN)
+                if f is not None:
+                    if process_frame:
+                        self.step = False
+                        self.adjust_calibration()
+                        self.tracking.track(f)
+                        try:
+                            f = self.tracking.output.get(block=True)
+                            fps.stop()
+                            frames_per_second = int(fps.fps())
+                            if frames_per_second >= 90:
+                                color = (0, 255, 0)
+                            elif frames_per_second >= 75:
+                                color = (0, 255, 127)
+                            else:
+                                color = (100, 0, 255)
+                            r_text(f, f"FPS: {frames_per_second}", self.dims.scaled[0] - 60, self.dims.scaled[1] - 10,
+                                   self.dims.scale, color)
+                        except Empty:
+                            # logging.debug("No new frame")
+                            pass
+                        self.display.show(f)
+                        self.render_calibration()
+                    if self.display.render(callbacks=callbacks):
+                        break
+                else:
                     break
-            else:
-                break
+            except Exception as e:
+                logging.error(f"Error in stream {e}")
+                traceback.print_exc()
 
         self.cap.stop()
         self.tracking.stop()

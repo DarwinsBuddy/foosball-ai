@@ -5,8 +5,9 @@ from queue import Empty
 import pypeln as pl
 
 from .colordetection import detect_ball
-from .models import TrackResult, Track, BallConfig, Info, Blob, PreprocessResult, Goals
+from ..models import TrackResult, Track, BallConfig, Info, Blob, PreprocessResult, Goals
 from .preprocess import WarpMode, project_blob
+from ..utils import toGPU, fromGPU
 
 
 def log(result: TrackResult) -> None:
@@ -80,6 +81,7 @@ class Tracker:
                         pass
                 f = preprocess_result.preprocessed if preprocess_result.preprocessed is not None else preprocess_result.original
                 # TODO: research this opencl T-API call for moving things into Shared Virtual Memory f = cv2.UMat(f)
+                f = toGPU(f)
                 ball_detection_result = detect_ball(f, self.ball_bounds)
                 ball = ball_detection_result.ball
                 # do not forget to project detected points onto the original frame on rendering
@@ -92,7 +94,7 @@ class Tracker:
                             right=project_blob(goals.right, preprocess_result.homography_matrix, WarpMode.DEWARP)
                         )
                 if self.ball_calibration:
-                    self.calibration_out.put_nowait(ball_detection_result.frame.copy())
+                    self.calibration_out.put_nowait(fromGPU(ball_detection_result.frame))
                 ball_track = self.update_ball_track(ball)
             info = preprocess_result.info + self.get_info(ball_track)
         except Exception as e:

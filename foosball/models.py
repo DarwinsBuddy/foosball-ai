@@ -1,7 +1,7 @@
 import collections
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
 import cv2
 import numpy as np
@@ -18,7 +18,10 @@ def hsv2rgb(hsv: HSV) -> RGB:
     return cv2.cvtColor(np.uint8([[hsv]]), cv2.COLOR_HSV2RGB)[0][0]
 
 
-Frame = np.array
+CPUFrame = np.array
+GPUFrame = cv2.UMat
+Frame = Union[CPUFrame, GPUFrame]
+
 Mask = np.array
 
 
@@ -107,7 +110,7 @@ Info = list[tuple[str, str]]
 
 @dataclass
 class TrackResult:
-    frame: Frame
+    frame: CPUFrame
     goals: Optional[Goals]
     ball_track: Track
     ball: Blob
@@ -115,7 +118,7 @@ class TrackResult:
 
 @dataclass
 class AnalyzeResult:
-    frame: Frame
+    frame: CPUFrame
     score: Score
     goals: Optional[Goals]
     ball_track: Track
@@ -124,8 +127,8 @@ class AnalyzeResult:
 
 @dataclass
 class PreprocessResult:
-    original: Frame
-    preprocessed: Optional[Frame]
+    original: CPUFrame
+    preprocessed: Optional[CPUFrame]
     homography_matrix: Optional[np.ndarray]  # 3x3 matrix used to warp the image and project points
     goals: Optional[Goals]
     info: Info

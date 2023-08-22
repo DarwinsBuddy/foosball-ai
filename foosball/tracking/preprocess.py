@@ -6,9 +6,10 @@ import cv2
 import numpy as np
 import pypeln as pl
 
+from ..utils import toGPU, fromGPU, ensureCPU
 from .colordetection import detect_goals
 from ..arUcos import calibration, Aruco
-from ..tracking.models import Frame, PreprocessResult, Point, Rect, GoalConfig, Blob, Goals
+from ..models import Frame, PreprocessResult, Point, Rect, GoalConfig, Blob, Goals
 
 TEXT_SCALE = 0.8
 TEXT_COLOR = (0, 255, 0)
@@ -80,6 +81,7 @@ class PreProcessor:
         return frame if self.mask is None else cv2.bitwise_and(frame, frame, mask=self.mask)
 
     def process(self, frame: Frame) -> PreprocessResult:
+        frame = toGPU(frame)
         preprocessed = frame
         info = []
         try:
@@ -106,7 +108,7 @@ class PreProcessor:
                         # detect goals anew
                         goals_detection_result = detect_goals(preprocessed, self.goal_config)
                         if self.goals_calibration:
-                            self.calibration_out.put_nowait(goals_detection_result.frame)
+                            self.calibration_out.put_nowait(ensureCPU(goals_detection_result.frame))
                         # check if goals are not significantly smaller than before
                         new_goals = goals_detection_result.goals
                         if self.goals is None:
@@ -126,7 +128,7 @@ class PreProcessor:
         except Exception as e:
             logging.error(f"Error in preprocess {e}")
             traceback.print_exc()
-        return PreprocessResult(frame, preprocessed, self.homography_matrix, self.goals, info)
+        return PreprocessResult(fromGPU(frame), fromGPU(preprocessed), self.homography_matrix, self.goals, info)
 
     @staticmethod
     def corners2pt(corners) -> [int, int]:

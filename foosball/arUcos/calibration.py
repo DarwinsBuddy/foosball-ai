@@ -8,15 +8,16 @@ import time
 from random import sample
 from typing import Optional, List
 
-import cv2
 from cv2 import aruco
+import cv2
 import numpy as np
 import yaml
 from tqdm import tqdm
 
 from .models import Aruco
+from ..models import Frame
+from ..utils import ensureCPU
 
-Frame = np.array
 DIST_COEFF_PATH = 'dist_coeff.npy'
 CAMERA_MATRIX_PATH = 'camera_matrix.npy'
 CALIBRATION_YAML = 'calibration.yaml'
@@ -109,7 +110,7 @@ def draw_markers(img: Frame, arucos: list[Aruco], calib: Calibration = None) -> 
     if len(arucos) > 0:
         corners = np.array([a.corners for a in arucos])
         ids = np.array([a.id for a in arucos])
-        img = cv2.aruco.drawDetectedMarkers(img, corners, ids, (0, 255, 0))
+        img = aruco.drawDetectedMarkers(img, corners, ids, (0, 255, 0))
         if calib is not None:
             for a in arucos:
                 if a.rotation_vector is not None and a.translation_vector is not None:
@@ -120,8 +121,9 @@ def draw_markers(img: Frame, arucos: list[Aruco], calib: Calibration = None) -> 
     return img
 
 
-def detect_markers(image, detector: cv2.aruco.ArucoDetector) -> list[Aruco]:
+def detect_markers(image, detector: aruco.ArucoDetector) -> list[Aruco]:
     corners, ids, rejected_img_points = detector.detectMarkers(image)
+    ids = ensureCPU(ids)
     # if rejected_img_points is not None:
     #     logging.debug(f"Marker detection rejected {len(rejected_img_points)}")
     if ids is not None:
@@ -134,7 +136,7 @@ def estimate_markers_poses(arucos: List[Aruco], calib: Calibration):
     corners = np.array([a.corners for a in arucos])
     # Estimate pose of each marker and return the values rotation_vector and translation_vector
     # (different from those of camera coefficients)
-    rotation_vectors, translation_vectors, marker_points = cv2.aruco.estimatePoseSingleMarkers(corners, 0.02,
+    rotation_vectors, translation_vectors, marker_points = aruco.estimatePoseSingleMarkers(corners, 0.02,
                                                                                                calib.camera_matrix,
                                                                                                calib.dist_coefficients)
     if rotation_vectors is not None and translation_vectors is not None:
@@ -145,20 +147,20 @@ def estimate_markers_poses(arucos: List[Aruco], calib: Calibration):
 
 
 def init_aruco_detector(aruco_dictionary, aruco_params):
-    aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dictionary)
-    detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
+    aruco_dict = aruco.getPredefinedDictionary(aruco_dictionary)
+    detector = aruco.ArucoDetector(aruco_dict, aruco_params)
     return detector, aruco_dict
 
 
 def calibrate_camera(camera_id=None, calibration_video_path=None, calibration_images_path=None, headless=False,
-                     aruco_dictionary=cv2.aruco.DICT_4X4_1000, marker_length_cm=5.0, marker_separation_cm=1.0,
-                     aruco_params=cv2.aruco.DetectorParameters(), recording_time=5, sample_size=None):
+                     aruco_dictionary=aruco.DICT_4X4_1000, marker_length_cm=5.0, marker_separation_cm=1.0,
+                     aruco_params=aruco.DetectorParameters(), recording_time=5, sample_size=None):
     print("CAMERA: ", camera_id)
     print("images: ", calibration_images_path)
     # For validating results, show aruco board to camera.
     detector, aruco_dict = init_aruco_detector(aruco_dictionary=aruco_dictionary, aruco_params=aruco_params)
-    board = cv2.aruco.GridBoard((4, 5), marker_length_cm, marker_separation_cm, aruco_dict)
-    board_img = cv2.aruco.drawPlanarBoard(board, (864, 1080), marginSize=0, borderBits=1)
+    board = aruco.GridBoard((4, 5), marker_length_cm, marker_separation_cm, aruco_dict)
+    board_img = aruco.drawPlanarBoard(board, (864, 1080), marginSize=0, borderBits=1)
     if not headless:
         cv2.imshow("board", board_img)
     shape = None

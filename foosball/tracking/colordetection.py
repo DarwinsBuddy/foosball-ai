@@ -4,7 +4,7 @@ import cv2
 import imutils
 import numpy as np
 
-from .models import BallDetectionResult, Frame, Blob, BallConfig, GoalsDetectionResult, Goals, Point, GoalConfig, Goal
+from ..models import BallDetectionResult, Frame, Blob, BallConfig, GoalsDetectionResult, Goals, Point, GoalConfig, Goal
 
 
 def detect_ball(frame, bounds: BallConfig) -> BallDetectionResult:

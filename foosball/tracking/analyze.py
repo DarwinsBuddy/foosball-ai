@@ -1,10 +1,9 @@
 import logging
 import traceback
-from collections import deque
 from typing import Optional
 
-from .models import TrackResult, Team, Goals, Score, AnalyzeResult, Track
-from .utils import contains
+from ..models import TrackResult, Team, Goals, Score, AnalyzeResult, Track
+from ..utils import contains
 
 
 class Analyzer:

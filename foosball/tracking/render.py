@@ -5,9 +5,8 @@ import cv2
 import numpy as np
 import pypeln as pl
 
-from . import FrameDimensions
-from .colordetection import Blob
-from .models import Info, Goal, AnalyzeResult, Score
+from ..models import Info, Goal, AnalyzeResult, Score, FrameDimensions, Blob
+from ..utils import toGPU, fromGPU
 
 TEXT_SCALE = 0.8
 FONT = cv2.FONT_HERSHEY_SIMPLEX
@@ -44,7 +43,7 @@ def r_score(frame, score: Score, dims: FrameDimensions) -> None:
     text = f"{score.blue} : {score.red}"
     textsize = cv2.getTextSize(text, FONT, 1, 2)[0]
     p = 10
-    x = int((frame.shape[1] - textsize[0]) / 2)
+    x = int((dims.scaled[0] - textsize[0]) / 2)
     y = 0
     cv2.rectangle(frame, (x, y), (x+textsize[0]+p, y+textsize[1]+p), (0, 0, 0), -1)
     r_text(frame, text,  x + int(p/2), y + textsize[1] + int(p/2), dims.scale, GREEN, 2)
@@ -101,7 +100,7 @@ class Renderer:
         self.out.stop()
 
     def render(self, analyze_result: AnalyzeResult) -> AnalyzeResult:
-        f = analyze_result.frame
+        f = toGPU(analyze_result.frame)
         ball = analyze_result.ball
         goals = analyze_result.goals
         track = analyze_result.ball_track
@@ -120,8 +119,8 @@ class Renderer:
                 r_info(f, self.dims, info)
             else:
                 print(" - ".join([f"{label}: {text}" for label, text in info]) + (" " * 50), end="\r")
-            self.out.put_nowait(f)
+            self.out.put_nowait(fromGPU(f))
         except Exception as e:
-            logging.error("Error in renderer {e}")
+            logging.error(f"Error in renderer {e}")
             traceback.print_exc()
         return analyze_result

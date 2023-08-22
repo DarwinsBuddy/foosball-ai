@@ -6,7 +6,7 @@ import pypeln as pl
 from pypeln import BaseStage
 
 from .analyze import Analyzer
-from .models import Mask, FrameDimensions, BallConfig, ScaleDirection, RGB, HSV, rgb2hsv, GoalConfig, Frame
+from ..models import Mask, FrameDimensions, BallConfig, ScaleDirection, RGB, HSV, rgb2hsv, GoalConfig, Frame
 from .preprocess import PreProcessor
 from .render import Renderer
 from .tracker import Tracker

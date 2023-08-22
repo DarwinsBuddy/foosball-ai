@@ -4,9 +4,10 @@ from queue import Empty
 
 from imutils.video import FPS
 
-from . import Tracking, FrameDimensions, ScaleDirection, get_ball_config, get_goal_config
+from . import Tracking, get_ball_config, get_goal_config
 from .render import r_text
-from .utils import scale
+from ..models import FrameDimensions, ScaleDirection
+from ..utils import scale
 from ..display.cv import OpenCVDisplay, get_slider_config, add_config_input, reset_config, store_config, Key
 
 

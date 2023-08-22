@@ -6,7 +6,7 @@ import numpy as np
 import yaml
 
 from foosball.tracking import BallConfig
-from foosball.tracking.models import rgb2hsv, hsv2rgb, GoalConfig
+from foosball.models import rgb2hsv, hsv2rgb, GoalConfig
 
 GOAL = "goal"
 BALL = "ball"

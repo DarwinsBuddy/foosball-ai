@@ -41,6 +41,9 @@ ap.add_argument("-yp", "--ypad", type=int, default=20, help="Vertical padding ap
 ap.add_argument("-s", "--scale", type=float, default=0.4, help="Scale stream")
 ap.add_argument("-cap", "--capture", choices=['gear', 'imutils'], default='gear', help="capture backend")
 ap.add_argument("-d", "--display", choices=['cv', 'gear'], default='cv', help="display backend")
+ap.add_argument("-gpup", "--preprocess-gpu", action='store_true', help="use GPU for preprocess")
+ap.add_argument("-gput", "--tracker-gpu", action='store_true',  help="use GPU for tracker")
+ap.add_argument("-gpur", "--render-gpu", action="store_true", default=True, help='use GPU for rendering')
 kwargs = vars(ap.parse_args())
 
 
@@ -53,17 +56,18 @@ if __name__ == '__main__':
     cap = None
     dis = None
     if kwargs.get('file'):
-        if kwargs.get('display') == 'cv':
-            from .display.cv import OpenCVDisplay
+        if not kwargs.get('headless'):
+            if kwargs.get('display') == 'cv':
+                from .display.cv import OpenCVDisplay
 
-            dis = OpenCVDisplay()
-        elif kwargs.get('display') == 'gear':
-            print("[ALPHA] Feature - Streaming not fully supported")
-            from .display.gear import StreamDisplay
+                dis = OpenCVDisplay()
+            elif kwargs.get('display') == 'gear':
+                print("[ALPHA] Feature - Streaming not fully supported")
+                from .display.gear import StreamDisplay
 
-            dis = StreamDisplay()
-        else:
-            usage_and_exit()
+                dis = StreamDisplay()
+            else:
+                usage_and_exit()
 
         if kwargs.get('capture') == 'gear':
             from .capture.gearcapture import GearCapture
@@ -80,7 +84,6 @@ if __name__ == '__main__':
 
 
         def signal_handler(sig, frame):
-            print('\n\nExiting...')
             ai.stop()
 
 

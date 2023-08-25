@@ -7,16 +7,17 @@ import pypeln as pl
 
 
 class Pipeline:
-    def __init__(self):
+    def __init__(self, use_signal_handler: bool = False):
         self.p = None
         self.running = False
         self.stopped = False
 
-        def signal_handler(sig, frame):
-            print('\n\nExiting...')
-            self.stop()
+        if use_signal_handler:
+            def signal_handler(sig, frame):
+                print('\n\nExiting...')
+                self.stop()
 
-        signal.signal(signal.SIGINT, signal_handler)
+            signal.signal(signal.SIGINT, signal_handler)
 
     def stop(self, timeout=5):
         self._stop()

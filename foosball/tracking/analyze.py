@@ -33,7 +33,7 @@ class Analyzer:
         try:
             team = self.goal_shot(goals, track) if None not in [goals, track, self.last_track] else None
             if team is not None:
-                print(f"GOOOOOOAL!!! {team}", end="\n\n")
+                print(f"GOAL Team:{team} - {self.score.red} : {self.score.blue}", end="\n")
             self.score.inc(team)
             self.last_track = track
         except Exception as e:

@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 from .models import Aruco
 from ..models import Frame
-from ..utils import ensureCPU
+from ..utils import ensure_cpu
 
 DIST_COEFF_PATH = 'dist_coeff.npy'
 CAMERA_MATRIX_PATH = 'camera_matrix.npy'
@@ -123,7 +123,7 @@ def draw_markers(img: Frame, arucos: list[Aruco], calib: Calibration = None) -> 
 
 def detect_markers(image, detector: aruco.ArucoDetector) -> list[Aruco]:
     corners, ids, rejected_img_points = detector.detectMarkers(image)
-    ids = ensureCPU(ids)
+    ids = ensure_cpu(ids)
     # if rejected_img_points is not None:
     #     logging.debug(f"Marker detection rejected {len(rejected_img_points)}")
     if ids is not None:

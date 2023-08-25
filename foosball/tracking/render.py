@@ -6,7 +6,7 @@ import numpy as np
 import pypeln as pl
 
 from ..models import Info, Goal, AnalyzeResult, Score, FrameDimensions, Blob
-from ..utils import toGPU, fromGPU
+from ..utils import generate_processor_switches
 
 TEXT_SCALE = 0.8
 FONT = cv2.FONT_HERSHEY_SIMPLEX
@@ -59,11 +59,11 @@ def r_ball(frame, b: Blob, scale) -> None:
     minimum = scale * 9
     maximum = scale * 33
     # only proceed if the radius meets a minimum size
-    if minimum < w < maximum and minimum < h < maximum:
+    #if minimum < w < maximum and minimum < h < maximum:
         # draw the circle and centroid on the frame,
         # then update the list of tracked points
         # cv2.circle(frame, center, 5, (0, 0, 255), -1)
-        cv2.rectangle(frame, (x, y), (x + w, y + h), GREEN, 1)
+    cv2.rectangle(frame, (x, y), (x + w, y + h), GREEN, 1)
         # cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
 
 
@@ -90,36 +90,38 @@ def r_track(frame, ball_track, scale) -> None:
 
 
 class Renderer:
-    def __init__(self, dims: FrameDimensions, headless=False, **kwargs):
+    def __init__(self, dims: FrameDimensions, headless=False, useGPU: bool = False, **kwargs):
         self.dims = dims
         self.headless = headless
         self.kwargs = kwargs
+        [self.proc, self.iproc] = generate_processor_switches(useGPU)
         self.out = pl.process.IterableQueue()
 
     def stop(self) -> None:
         self.out.stop()
 
     def render(self, analyze_result: AnalyzeResult) -> AnalyzeResult:
-        f = toGPU(analyze_result.frame)
-        ball = analyze_result.ball
-        goals = analyze_result.goals
-        track = analyze_result.ball_track
         info = analyze_result.info
-        score = analyze_result.score
-
         try:
-            if ball is not None:
-                r_ball(f, ball, self.dims.scale)
-            if goals is not None:
-                r_goal(f, goals.left)
-                r_goal(f, goals.right)
-            r_track(f, track, self.dims.scale)
-            r_score(f, score, self.dims)
             if not self.headless:
+                f = self.proc(analyze_result.frame)
+                ball = analyze_result.ball
+                goals = analyze_result.goals
+                track = analyze_result.ball_track
+                score = analyze_result.score
+
+                if ball is not None:
+                    r_ball(f, ball, self.dims.scale)
+                if goals is not None:
+                    r_goal(f, goals.left)
+                    r_goal(f, goals.right)
+                r_track(f, track, self.dims.scale)
+                r_score(f, score, self.dims)
                 r_info(f, self.dims, info)
+                self.out.put_nowait(self.iproc(f))
             else:
-                print(" - ".join([f"{label}: {text}" for label, text in info]) + (" " * 50), end="\r")
-            self.out.put_nowait(fromGPU(f))
+                self.out.put_nowait(" - ".join([f"{label}: {text}" for label, text in info]))
+
         except Exception as e:
             logging.error(f"Error in renderer {e}")
             traceback.print_exc()

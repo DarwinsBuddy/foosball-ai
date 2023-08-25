@@ -68,7 +68,8 @@ def filter_gray_range(frame, config: GoalConfig) -> Frame:
         dilated_mask = cv2.dilate(mask, kernel, iterations=2)
         eroded_mask = cv2.erode(dilated_mask, kernel, iterations=6)
         final_mask = eroded_mask if not config.invert_mask else cv2.bitwise_not(eroded_mask)
-        return cv2.bitwise_and(f, f, mask=final_mask)
+        x = cv2.bitwise_and(f, f, mask=final_mask)
+        return cv2.dilate(x, kernel, iterations=2)
     except Exception as e:
         logging.error(f"Exception: {e}\n\n")
         return frame

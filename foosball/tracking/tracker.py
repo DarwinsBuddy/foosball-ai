@@ -5,9 +5,9 @@ from queue import Empty
 import pypeln as pl
 
 from .colordetection import detect_ball
-from ..models import TrackResult, Track, BallConfig, Info, Blob, PreprocessResult, Goals
 from .preprocess import WarpMode, project_blob
-from ..utils import toGPU, fromGPU
+from ..models import TrackResult, Track, BallConfig, Info, Blob, PreprocessResult, Goals
+from ..utils import generate_processor_switches
 
 
 def log(result: TrackResult) -> None:
@@ -16,18 +16,18 @@ def log(result: TrackResult) -> None:
 
 class Tracker:
 
-    def __init__(self, ball_bounds: BallConfig, **kwargs):
+    def __init__(self, ball_bounds: BallConfig, useGPU: bool = False, **kwargs):
         self.kwargs = kwargs
         self.ball_track = Track(maxlen=kwargs.get('buffer'))
         self.off = kwargs.get('off')
         self.verbose = kwargs.get("verbose")
         self.calibration = kwargs.get("calibration")
+        [self.proc, self.iproc] = generate_processor_switches(useGPU)
         # define the lower_ball and upper_ball boundaries of the
         # ball in the HSV color space, then initialize the
         self.ball_bounds = ball_bounds
         self.ball_calibration = self.calibration == "ball"
-        if self.calibration is not None:
-            self.calibration_bounds = lambda: self.ball_bounds if self.ball_calibration else None
+        self.calibration_bounds = lambda: self.ball_bounds if self.ball_calibration else None
         self.bounds_in = pl.process.IterableQueue() if self.ball_calibration else None
         self.calibration_out = pl.process.IterableQueue() if self.ball_calibration else None
 
@@ -79,9 +79,8 @@ class Tracker:
                         self.ball_bounds = self.bounds_in.get_nowait()
                     except Empty:
                         pass
-                f = preprocess_result.preprocessed if preprocess_result.preprocessed is not None else preprocess_result.original
+                f = self.proc(preprocess_result.preprocessed if preprocess_result.preprocessed is not None else preprocess_result.original)
                 # TODO: research this opencl T-API call for moving things into Shared Virtual Memory f = cv2.UMat(f)
-                f = toGPU(f)
                 ball_detection_result = detect_ball(f, self.ball_bounds)
                 ball = ball_detection_result.ball
                 # do not forget to project detected points onto the original frame on rendering
@@ -94,7 +93,7 @@ class Tracker:
                             right=project_blob(goals.right, preprocess_result.homography_matrix, WarpMode.DEWARP)
                         )
                 if self.ball_calibration:
-                    self.calibration_out.put_nowait(fromGPU(ball_detection_result.frame))
+                    self.calibration_out.put_nowait(self.iproc(ball_detection_result.frame))
                 ball_track = self.update_ball_track(ball)
             info = preprocess_result.info + self.get_info(ball_track)
         except Exception as e:

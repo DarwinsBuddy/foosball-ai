@@ -59,7 +59,9 @@ class Tracking(Pipeline):
 
     def _stop(self):
         self.frame_queue.stop()
+        self.preprocessor.stop()
         self.tracker.stop()
+        self.analyzer.stop()
         self.renderer.stop()
 
     def __init__(self, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, headless=False, **kwargs):
@@ -70,10 +72,10 @@ class Tracking(Pipeline):
         width, height = dims.scaled
         mask = generate_frame_mask(width, height)
 
-        self.preprocessor = PreProcessor(goal_config, mask=mask, headless=headless, **kwargs)
-        self.tracker = Tracker(ball_config, **kwargs)
+        self.preprocessor = PreProcessor(goal_config, mask=mask, headless=headless, useGPU=kwargs.get('preprocess-gpu'), **kwargs)
+        self.tracker = Tracker(ball_config, useGPU=kwargs.get('tracker-gpu'), **kwargs)
         self.analyzer = Analyzer(**kwargs)
-        self.renderer = Renderer(dims, headless=headless, **kwargs)
+        self.renderer = Renderer(dims, headless=headless, useGPU=kwargs.get('render-gpu'), **kwargs)
         self.build()
 
     @property

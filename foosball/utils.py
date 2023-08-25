@@ -1,3 +1,5 @@
+from typing import Callable
+
 import cv2
 
 from .models import FrameDimensions, ScaleDirection, Point, BBox, Frame, CPUFrame, GPUFrame
@@ -18,13 +20,23 @@ def contains(bbox: BBox, pt: Point) -> bool:
     [x, y, w, h] = bbox
     return x < pt[0] < x + w and y < pt[1] < y + h
 
-def toGPU(frame: CPUFrame) -> GPUFrame:
+
+def to_gpu(frame: CPUFrame) -> GPUFrame:
     return cv2.UMat(frame)
 
-def fromGPU(frame: GPUFrame) -> CPUFrame:
+
+def from_gpu(frame: GPUFrame) -> CPUFrame:
     return frame.get()
 
-def ensureCPU(frame: Frame) -> CPUFrame:
+
+def generate_processor_switches(useGPU: bool = False) -> [Callable[[Frame], Frame], Callable[[Frame], Frame]]:
+    if not useGPU:
+        return [lambda x: x, lambda x: x]
+    else:
+        return [from_gpu, to_gpu]
+
+
+def ensure_cpu(frame: Frame) -> CPUFrame:
     if type(frame) == cv2.UMat:
-        return fromGPU(frame)
+        return from_gpu(frame)
     return frame

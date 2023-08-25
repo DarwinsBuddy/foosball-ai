@@ -6,10 +6,11 @@ from imutils.video import FPS
 
 from . import Tracking, get_ball_config, get_goal_config
 from .render import r_text
-from ..models import FrameDimensions, ScaleDirection
+from ..models import FrameDimensions, ScaleDirection, Frame
 from ..utils import scale
 from ..display.cv import OpenCVDisplay, get_slider_config, add_config_input, reset_config, store_config, Key
 
+BLANKS = (' ' * 80)
 
 class AI:
 
@@ -17,7 +18,8 @@ class AI:
         self.args = args
         self.kwargs = kwargs
         self.cap = cap
-        self.display = dis
+        self.headless = kwargs.get('headless')
+        self.display = dis if not self.headless else None
         self.paused = False
         self.step = False
         self.calibration = self.kwargs.get('calibration')
@@ -35,10 +37,12 @@ class AI:
 
         self.tracking = Tracking(self.dims, self.ball_config, self.goals_config, **self.kwargs)
 
-        if self.calibration is not None:
+        if not self.headless and self.calibration is not None:
             self.calibration_display = OpenCVDisplay(self.calibration, pos='br')
             # init slider window
             add_config_input(self.calibration, self.calibration_config())
+
+        self.fps = FPS()
 
     def stop(self):
         self._stopped = True
@@ -73,12 +77,11 @@ class AI:
             ord('n'): step_frame
         }
 
-        fps = FPS()
-        fps.start()
+        self.fps.start()
         f = None
         while not self._stopped:
             try:
-                fps.update()
+                self.fps.update()
                 process_frame = not self.paused or self.step
                 if process_frame:
                     f = self.cap.next()
@@ -90,24 +93,21 @@ class AI:
                         self.adjust_calibration()
                         self.tracking.track(f)
                         try:
-                            f = self.tracking.output.get(block=True)
-                            fps.stop()
-                            frames_per_second = int(fps.fps())
-                            if frames_per_second >= 90:
-                                color = (0, 255, 0)
-                            elif frames_per_second >= 75:
-                                color = (0, 255, 127)
+                            f = self.tracking.output.get(block=False)
+                            self.fps.stop()
+                            fps = int(self.fps.fps())
+                            if not self.headless:
+                                self.render_fps(f, fps)
+                                self.display.show(f)
+                                if self.calibration is not None:
+                                    self.render_calibration()
+                                if self.display.render(callbacks=callbacks):
+                                    break
                             else:
-                                color = (100, 0, 255)
-                            r_text(f, f"FPS: {frames_per_second}", self.dims.scaled[0] - 60, self.dims.scaled[1] - 10,
-                                   self.dims.scale, color)
+                                print(f"{f} - FPS: {fps} {BLANKS}", end="\r")
                         except Empty:
                             # logging.debug("No new frame")
                             pass
-                        self.display.show(f)
-                        self.render_calibration()
-                    if self.display.render(callbacks=callbacks):
-                        break
                 else:
                     break
             except Exception as e:
@@ -116,17 +116,28 @@ class AI:
 
         self.cap.stop()
         self.tracking.stop()
-        self.display.stop()
+        if not self.headless:
+            self.display.stop()
         if self.calibration is not None:
             self.calibration_display.stop()
 
+    def render_fps(self, frame: Frame, fps: int):
+        frames_per_second = fps
+        if frames_per_second >= 90:
+            color = (0, 255, 0)
+        elif frames_per_second >= 75:
+            color = (0, 255, 127)
+        else:
+            color = (100, 0, 255)
+        r_text(frame, f"FPS: {frames_per_second}", self.dims.scaled[0] - 60, self.dims.scaled[1] - 10,
+               self.dims.scale, color)
+
     def render_calibration(self):
-        if self.calibration is not None:
-            try:
-                self.detection_frame = self.tracking.calibration_output.get_nowait()
-                self.calibration_display.show(self.detection_frame)
-            except Empty:
-                pass
+        try:
+            self.detection_frame = self.tracking.calibration_output.get_nowait()
+            self.calibration_display.show(self.detection_frame)
+        except Empty:
+            pass
 
     def adjust_calibration(self):
         # see if some sliders changed

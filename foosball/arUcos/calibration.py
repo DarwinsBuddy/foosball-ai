@@ -18,6 +18,10 @@ from .models import Aruco
 from ..models import Frame
 from ..utils import ensure_cpu
 
+DEFAULT_MARKER_SEPARATION_CM = 1.0
+
+DEFAULT_MARKER_LENGTH_CM = 5.0
+
 DIST_COEFF_PATH = 'dist_coeff.npy'
 CAMERA_MATRIX_PATH = 'camera_matrix.npy'
 CALIBRATION_YAML = 'calibration.yaml'
@@ -151,16 +155,24 @@ def init_aruco_detector(aruco_dictionary, aruco_params):
     detector = aruco.ArucoDetector(aruco_dict, aruco_params)
     return detector, aruco_dict
 
+def generate_aruco_board(aruco_dict, marker_length_cm, marker_separation_cm):
+    board = aruco.GridBoard((4, 5), marker_length_cm, marker_separation_cm, aruco_dict)
+    board_img = aruco.drawPlanarBoard(board, (864, 1080), marginSize=0, borderBits=1)
+    return board_img
+
+def print_aruco_board(filename='aruco.png', aruco_dictionary=aruco.DICT_4X4_1000, aruco_params=aruco.DetectorParameters(), marker_length_cm=DEFAULT_MARKER_LENGTH_CM, marker_separation_cm=DEFAULT_MARKER_SEPARATION_CM):
+    detector, aruco_dict = init_aruco_detector(aruco_dictionary=aruco_dictionary, aruco_params=aruco_params)
+    board_img = generate_aruco_board(aruco_dict, marker_length_cm, marker_separation_cm)
+    cv2.imwrite(filename, board_img)
 
 def calibrate_camera(camera_id=None, calibration_video_path=None, calibration_images_path=None, headless=False,
-                     aruco_dictionary=aruco.DICT_4X4_1000, marker_length_cm=5.0, marker_separation_cm=1.0,
+                     aruco_dictionary=aruco.DICT_4X4_1000, marker_length_cm=DEFAULT_MARKER_LENGTH_CM, marker_separation_cm=DEFAULT_MARKER_SEPARATION_CM,
                      aruco_params=aruco.DetectorParameters(), recording_time=5, sample_size=None):
     print("CAMERA: ", camera_id)
     print("images: ", calibration_images_path)
     # For validating results, show aruco board to camera.
     detector, aruco_dict = init_aruco_detector(aruco_dictionary=aruco_dictionary, aruco_params=aruco_params)
-    board = aruco.GridBoard((4, 5), marker_length_cm, marker_separation_cm, aruco_dict)
-    board_img = aruco.drawPlanarBoard(board, (864, 1080), marginSize=0, borderBits=1)
+    board_img = generate_aruco_board(aruco_dict, marker_length_cm, marker_separation_cm)
     if not headless:
         cv2.imshow("board", board_img)
     shape = None

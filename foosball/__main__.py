@@ -2,7 +2,7 @@ import argparse
 import os
 import signal
 
-from foosball.arUcos.calibration import calibrate_camera
+from foosball.arUcos.calibration import calibrate_camera, generate_aruco_board, print_aruco_board
 from .tracking.ai import AI
 
 
@@ -22,6 +22,7 @@ def file_path(string):
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-f", "--file", help="path to the (optional) video file")
+ap.add_argument("-a", "--arucoBoard", action='store_true', help="Output aruco board as arucos.pdf")
 ap.add_argument("-c", "--calibration", choices=['ball', 'goal', 'cam'], help="Calibration mode")
 ap.add_argument("-ci", "--calibrationImagePath", type=dir_path, default=None,
                 help="Images path for calibration mode. If not given switching to live calibration")
@@ -55,7 +56,10 @@ def usage_and_exit():
 if __name__ == '__main__':
     cap = None
     dis = None
-    if kwargs.get('file'):
+    if kwargs.get('arucoBoard'):
+        print_aruco_board()
+        print("Aruco board printed")
+    elif kwargs.get('file'):
         if not kwargs.get('headless'):
             if kwargs.get('display') == 'cv':
                 from .display.cv import OpenCVDisplay

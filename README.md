@@ -25,21 +25,53 @@ python3 -m venv ./venv
 pip install -r requirements.txt  
 ```
 ## Run  
-0. (optional) Download demo video
-https://drive.google.com/file/d/1tmaV2U_amzUHP3u4lQtom16IFclRu5Fe/view?usp=sharing
-
+0. (optional) Download video
+   1. demo video
+      1. orange ball https://drive.google.com/file/d/1tmaV2U_amzUHP3u4lQtom16IFclRu5Fe/view?usp=sharing
+      1. yellow ball https://mega.nz/file/UpNSwaBY#7__EPElzGkf6ohM_Oe5kxjJpIV2TUmJ8k63HJV0X4oU
+   1. calibration video for camera calibration
+      1. orange ball (not needed, since it's without arUco markers)
+      2. yellow ball https://mega.nz/file/w98z3ABK#e6rwmejpqAgv3Ipc5CqkkAjdf-M0NEEtcTlGkSc4hUo
 1. Activate venv  
+> ```#!/bin/sh  
+> . ./venv/bin/activate  
+> ```
+2. Run camera calibration
+> ```#!/bin/sh  
+> python3 -m foosball -c cam -cv <path-to-calibration-video>.mp4
+> ```
+3. Run
 ```#!/bin/sh  
-. ./venv/bin/activate  
-```  
-2. Run
-```#!/bin/sh  
-python3 -m foosball -f ./demo.mp4
+python3 -m foosball -f <path-to-file>.mp4
 ```
 ## Misc
 ### Calibration
-There is plenty to do for that project, but for now we merely calibrate the color of the ball manually by using
-calibration mode like follows
-```#!/bin/sh  
-python3 -m foosball -f ./demo.mp4 -c
-```
+#### Color
+Color calibration is needed for the ball (or the goals) to be detected.
+There are 2 preconfigured ball profiles and 1 goal profile available, accessible
+by a cli option. For individual options please refer to the calibration mode where you can select the color range to 
+be detected and stored in a color profile accordingly.
+
+> `ball`/`goal` calibration mode
+> ```#!/bin/sh  
+> python3 -m foosball -f ./demo.mp4 -c [ball|goal]
+> ```
+
+#### camera (aruco)
+1. Generate Aruco Board
+   > ```#!/bin/sh  
+   > python3 -m foosball -a
+   > ```
+2. Print it in DIN A4 format (`aruco.png`)
+3. In order to automatically detected the aruco markers and thus
+improve performance and accuracy, for each camera an initial calibration has to be done.
+Once run this application with calibration mode `cam` and present the printed out version of
+the generated aruco board to the camera by
+- waving it sturdily in different angles in front of the camera,
+- provide the path to a pre-recorded version of it
+- or provide a path to a set of pre-recoded images of it
+
+>`cam` calibration mode
+> ```#!/bin/sh  
+> python3 -m foosball -c cam -cs 50
+> ```

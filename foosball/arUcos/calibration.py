@@ -157,12 +157,16 @@ def init_aruco_detector(aruco_dictionary, aruco_params):
 
 def generate_aruco_board(aruco_dict, marker_length_cm, marker_separation_cm):
     board = aruco.GridBoard((4, 5), marker_length_cm, marker_separation_cm, aruco_dict)
+    return board
+
+def generate_aruco_board_image(board):
     board_img = aruco.drawPlanarBoard(board, (864, 1080), marginSize=0, borderBits=1)
     return board_img
 
 def print_aruco_board(filename='aruco.png', aruco_dictionary=aruco.DICT_4X4_1000, aruco_params=aruco.DetectorParameters(), marker_length_cm=DEFAULT_MARKER_LENGTH_CM, marker_separation_cm=DEFAULT_MARKER_SEPARATION_CM):
     detector, aruco_dict = init_aruco_detector(aruco_dictionary=aruco_dictionary, aruco_params=aruco_params)
-    board_img = generate_aruco_board(aruco_dict, marker_length_cm, marker_separation_cm)
+    board = generate_aruco_board(aruco_dict, marker_length_cm, marker_separation_cm)
+    board_img = generate_aruco_board_image(board)
     cv2.imwrite(filename, board_img)
 
 def calibrate_camera(camera_id=None, calibration_video_path=None, calibration_images_path=None, headless=False,
@@ -172,8 +176,9 @@ def calibrate_camera(camera_id=None, calibration_video_path=None, calibration_im
     print("images: ", calibration_images_path)
     # For validating results, show aruco board to camera.
     detector, aruco_dict = init_aruco_detector(aruco_dictionary=aruco_dictionary, aruco_params=aruco_params)
-    board_img = generate_aruco_board(aruco_dict, marker_length_cm, marker_separation_cm)
+    board = generate_aruco_board(aruco_dict, marker_length_cm, marker_separation_cm)
     if not headless:
+        board_img = generate_aruco_board_image(board)
         cv2.imshow("board", board_img)
     shape = None
     # if calibration_images_path calibrate with images

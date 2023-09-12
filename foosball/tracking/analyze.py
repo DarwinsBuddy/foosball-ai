@@ -32,9 +32,9 @@ class Analyzer:
         info = track_result.info
         try:
             team = self.goal_shot(goals, track) if None not in [goals, track, self.last_track] else None
+            self.score.inc(team)
             if team is not None:
                 print(f"GOAL Team:{team} - {self.score.red} : {self.score.blue}", end="\n")
-            self.score.inc(team)
             self.last_track = track
         except Exception as e:
             logging.error("Error in analyzer ", e)

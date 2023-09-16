@@ -56,10 +56,10 @@ def r_text(frame, text: str, x: int, y: int, scale: float, color=GREEN, size: in
 def r_ball(frame, b: Blob, scale) -> None:
     [x, y, w, h] = b.bbox
 
-    minimum = scale * 9
-    maximum = scale * 33
+    # minimum = scale * 9
+    # maximum = scale * 33
     # only proceed if the radius meets a minimum size
-    #if minimum < w < maximum and minimum < h < maximum:
+    # if minimum < w < maximum and minimum < h < maximum:
         # draw the circle and centroid on the frame,
         # then update the list of tracked points
         # cv2.circle(frame, center, 5, (0, 0, 255), -1)

@@ -33,7 +33,7 @@ def generate_processor_switches(useGPU: bool = False) -> [Callable[[Frame], Fram
     if not useGPU:
         return [lambda x: x, lambda x: x]
     else:
-        return [from_gpu, to_gpu]
+        return [to_gpu, from_gpu]
 
 
 def ensure_cpu(frame: Frame) -> CPUFrame:

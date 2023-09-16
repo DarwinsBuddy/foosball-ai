@@ -68,9 +68,11 @@ class PreProcessor:
             self.config_in.put_nowait(config)
 
     def stop(self) -> None:
+        logging.debug("Stopping preprocessor...")
         if self.goals_calibration:
             self.config_in.stop()
             self.calibration_out.stop()
+        logging.debug("Stopped preprocessor")
 
     def detect_markers(self, frame: Frame) -> list[Aruco]:
         img_gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
@@ -125,7 +127,6 @@ class PreProcessor:
                                 left=self.goals.left if left_change < self.goal_change_threshold else new_goals.left,
                                 right=self.goals.right if right_change < self.goal_change_threshold else new_goals.right
                             )
-                        # TODO: Improve tracker detection (seemingly goal cannot be tracked always, cause ball is not detected inside the goal)
                         # TODO: distinguish between red or blue goal (instead of left and right)
                     info.append(['goals', f'{"detected" if self.goals is not None else "fail"}'])
                 else:

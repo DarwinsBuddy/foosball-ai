@@ -6,7 +6,7 @@ import pypeln as pl
 from pypeln import BaseStage
 
 from .analyze import Analyzer
-from ..models import Mask, FrameDimensions, BallConfig, ScaleDirection, RGB, HSV, rgb2hsv, GoalConfig, Frame
+from ..models import Mask, FrameDimensions, BallConfig, rgb2hsv, GoalConfig, Frame
 from .preprocess import PreProcessor
 from .render import Renderer
 from .tracker import Tracker
@@ -58,11 +58,11 @@ def generate_frame_mask(width, height) -> Mask:
 class Tracking(Pipeline):
 
     def _stop(self):
-        self.frame_queue.stop()
         self.preprocessor.stop()
         self.tracker.stop()
         self.analyzer.stop()
         self.renderer.stop()
+        self.frame_queue.stop()
 
     def __init__(self, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, headless=False, **kwargs):
         super().__init__()
@@ -71,11 +71,11 @@ class Tracking(Pipeline):
         self.dims = dims
         width, height = dims.scaled
         mask = generate_frame_mask(width, height)
-
-        self.preprocessor = PreProcessor(goal_config, mask=mask, headless=headless, useGPU=kwargs.get('preprocess-gpu'), **kwargs)
-        self.tracker = Tracker(ball_config, useGPU=kwargs.get('tracker-gpu'), **kwargs)
+        use_gpu = kwargs.get('gpu')
+        self.preprocessor = PreProcessor(goal_config, mask=mask, headless=headless, useGPU=('preprocess' in use_gpu), **kwargs)
+        self.tracker = Tracker(ball_config, useGPU=('tracker' in use_gpu), **kwargs)
         self.analyzer = Analyzer(**kwargs)
-        self.renderer = Renderer(dims, headless=headless, useGPU=kwargs.get('render-gpu'), **kwargs)
+        self.renderer = Renderer(dims, headless=headless, useGPU=('render' in use_gpu), **kwargs)
         self.build()
 
     @property
@@ -83,17 +83,18 @@ class Tracking(Pipeline):
         return self.renderer.out
 
     @property
-    def calibration_output(self) -> pl.process.IterableQueue:
+    def calibration_output(self) -> pl.process.IterableQueue | None:
         if self.calibration == "ball":
             return self.tracker.calibration_out
         elif self.calibration == "goal":
             return self.preprocessor.calibration_out
+        return None
 
     def config_input(self, config) -> None:
         if self.calibration == "ball":
-            return self.tracker.config_input(config)
+            self.tracker.config_input(config)
         elif self.calibration == "goal":
-            return self.preprocessor.config_input(config)
+            self.preprocessor.config_input(config)
 
     def _build(self) -> BaseStage:
         return (

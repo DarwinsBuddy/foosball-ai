@@ -32,9 +32,11 @@ class Tracker:
         self.calibration_out = pl.process.IterableQueue() if self.ball_calibration else None
 
     def stop(self) -> None:
+        logging.debug("Stopping tracker...")
         if self.ball_calibration:
             self.bounds_in.stop()
             self.calibration_out.stop()
+        logging.debug("Stopped tracker")
 
     def update_ball_track(self, detected_ball: Blob) -> Track:
         if detected_ball is not None:

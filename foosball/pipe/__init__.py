@@ -2,13 +2,15 @@ import logging
 import signal
 from abc import abstractmethod
 from multiprocessing import Process
+# import multiprocessing
+# multiprocessing.log_to_stderr(logging.DEBUG)
 
 import pypeln as pl
 
 
 class Pipeline:
     def __init__(self, use_signal_handler: bool = False):
-        self.p = None
+        self.p: Process = None
         self.running = False
         self.stopped = False
 
@@ -19,11 +21,14 @@ class Pipeline:
 
             signal.signal(signal.SIGINT, signal_handler)
 
-    def stop(self, timeout=5):
+    def stop(self, timeout=10):
         self._stop()
         if self.p is not None:
             logging.debug(f'Stopping {self.__class__.__name__}...')
-            self.p.join(timeout=timeout)
+            try:
+                self.p.join(timeout=timeout)
+            except Exception as e:
+                logging.error("Error while joining: ", e)
             self.running = False
             self.stopped = True
             logging.debug(f'Stopped {self.__class__.__name__}')

@@ -13,7 +13,8 @@ class Analyzer:
         self.last_track: Track = None
 
     def stop(self) -> None:
-        pass
+        logging.debug("Stopping analyzer...")
+        logging.debug("Stopped analyzer")
 
     def goal_shot(self, goals: Goals, track: Track) -> Optional[Team]:
         # current track is empty but last track had one single point left

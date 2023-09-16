@@ -2,7 +2,7 @@ import argparse
 import os
 import signal
 
-from foosball.arUcos.calibration import calibrate_camera, generate_aruco_board, print_aruco_board
+from foosball.arUcos.calibration import calibrate_camera, print_aruco_board
 from .tracking.ai import AI
 
 
@@ -42,9 +42,7 @@ ap.add_argument("-yp", "--ypad", type=int, default=20, help="Vertical padding ap
 ap.add_argument("-s", "--scale", type=float, default=0.4, help="Scale stream")
 ap.add_argument("-cap", "--capture", choices=['gear', 'imutils'], default='gear', help="capture backend")
 ap.add_argument("-d", "--display", choices=['cv', 'gear'], default='cv', help="display backend")
-ap.add_argument("-gpup", "--preprocess-gpu", action='store_true', help="use GPU for preprocess")
-ap.add_argument("-gput", "--tracker-gpu", action='store_true',  help="use GPU for tracker")
-ap.add_argument("-gpur", "--render-gpu", action="store_true", default=True, help='use GPU for rendering')
+ap.add_argument("-g", "--gpu", choices=['preprocess', 'tracker', 'render'], nargs='+', default=["render"], help="use GPU")
 kwargs = vars(ap.parse_args())
 
 

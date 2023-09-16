@@ -67,6 +67,7 @@ class AI:
                 self.step = True
             return False
 
+        logging.debug("Starting foosball-ai...")
         self.tracking.start()
 
         callbacks = {
@@ -106,7 +107,7 @@ class AI:
                             else:
                                 print(f"{f} - FPS: {fps} {BLANKS}", end="\r")
                         except Empty:
-                            # logging.debug("No new frame")
+                            logging.debug("No new frame")
                             pass
                 else:
                     break
@@ -114,12 +115,16 @@ class AI:
                 logging.error(f"Error in stream {e}")
                 traceback.print_exc()
 
-        self.cap.stop()
+        logging.debug("Stopping foosball-ai...")
         self.tracking.stop()
+        self.cap.stop()
         if not self.headless:
             self.display.stop()
         if self.calibration is not None:
             self.calibration_display.stop()
+        logging.debug("Stopped foosball-ai")
+        self.tracking.output.clear()
+        self.tracking.frame_queue.clear()
 
     def render_fps(self, frame: Frame, fps: int):
         frames_per_second = fps

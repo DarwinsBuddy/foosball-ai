@@ -3,18 +3,19 @@ import traceback
 from typing import Optional
 
 from ..models import TrackResult, Team, Goals, Score, AnalyzeResult, Track
+from ..pipe.BaseProcess import BaseProcess, Msg
 from ..utils import contains
 
 
-class Analyzer:
-    def __init__(self, **kwargs):
+class Analyzer(BaseProcess):
+    def close(self):
+        pass
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(name="Analyzer")
         self.kwargs = kwargs
         self.score = Score()
-        self.last_track: Track = None
-
-    def stop(self) -> None:
-        logging.debug("Stopping analyzer...")
-        logging.debug("Stopped analyzer")
+        self.last_track: Optional[Track] = None
 
     def goal_shot(self, goals: Goals, track: Track) -> Optional[Team]:
         # current track is empty but last track had one single point left
@@ -25,7 +26,8 @@ class Analyzer:
                 return Team.RED
         return None
 
-    def analyze(self, track_result: TrackResult) -> AnalyzeResult:
+    def process(self, msg: Msg) -> Msg:
+        track_result = msg.kwargs['result']
         goals = track_result.goals
         ball = track_result.ball
         track = track_result.ball_track
@@ -40,4 +42,4 @@ class Analyzer:
         except Exception as e:
             logging.error("Error in analyzer ", e)
             traceback.print_exc()
-        return AnalyzeResult(score=self.score, ball=ball, goals=goals, frame=frame, info=info, ball_track=track)
+        return Msg(kwargs={"result": AnalyzeResult(score=self.score, ball=ball, goals=goals, frame=frame, info=info, ball_track=track)})

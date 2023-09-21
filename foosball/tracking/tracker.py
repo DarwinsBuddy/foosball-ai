@@ -1,12 +1,12 @@
 import logging
 import traceback
+from multiprocessing import Queue
 from queue import Empty
-
-import pypeln as pl
 
 from .colordetection import detect_ball
 from .preprocess import WarpMode, project_blob
 from ..models import TrackResult, Track, BallConfig, Info, Blob, PreprocessResult, Goals
+from ..pipe.BaseProcess import BaseProcess, Msg
 from ..utils import generate_processor_switches
 
 
@@ -14,9 +14,10 @@ def log(result: TrackResult) -> None:
     logging.debug(result.info)
 
 
-class Tracker:
+class Tracker(BaseProcess):
 
     def __init__(self, ball_bounds: BallConfig, useGPU: bool = False, **kwargs):
+        super().__init__(name="Tracker")
         self.kwargs = kwargs
         self.ball_track = Track(maxlen=kwargs.get('buffer'))
         self.off = kwargs.get('off')
@@ -28,15 +29,13 @@ class Tracker:
         self.ball_bounds = ball_bounds
         self.ball_calibration = self.calibration == "ball"
         self.calibration_bounds = lambda: self.ball_bounds if self.ball_calibration else None
-        self.bounds_in = pl.process.IterableQueue() if self.ball_calibration else None
-        self.calibration_out = pl.process.IterableQueue() if self.ball_calibration else None
+        self.bounds_in = Queue() if self.ball_calibration else None
+        self.calibration_out = Queue() if self.ball_calibration else None
 
-    def stop(self) -> None:
-        logging.debug("Stopping tracker...")
+    def close(self) -> None:
         if self.ball_calibration:
-            self.bounds_in.stop()
-            self.calibration_out.stop()
-        logging.debug("Stopped tracker")
+            self.bounds_in.close()
+            self.calibration_out.close()
 
     def update_ball_track(self, detected_ball: Blob) -> Track:
         if detected_ball is not None:
@@ -62,14 +61,15 @@ class Tracker:
         return info
 
     @property
-    def calibration_output(self) -> pl.process.IterableQueue:
+    def calibration_output(self) -> Queue:
         return self.calibration_out
 
     def config_input(self, config: BallConfig) -> None:
         if self.ball_calibration:
             self.bounds_in.put_nowait(config)
 
-    def track(self, preprocess_result: PreprocessResult) -> TrackResult:
+    def process(self, msg: Msg) -> Msg:
+        preprocess_result = msg.kwargs['result']
         ball = None
         goals = preprocess_result.goals
         ball_track = None
@@ -102,6 +102,6 @@ class Tracker:
             logging.error(f"Error in track {e}")
             traceback.print_exc()
         if not self.verbose:
-            return TrackResult(preprocess_result.original, goals, ball_track, ball, info)
+            return Msg(kwargs={"result": TrackResult(preprocess_result.original, goals, ball_track, ball, info)})
         else:
-            return TrackResult(preprocess_result.preprocessed, goals, ball_track, ball, info)
+            return Msg(kwargs={"result": TrackResult(preprocess_result.preprocessed, goals, ball_track, ball, info)})

@@ -3,9 +3,9 @@ import traceback
 
 import cv2
 import numpy as np
-import pypeln as pl
 
-from ..models import Info, Goal, AnalyzeResult, Score, FrameDimensions, Blob
+from ..models import Info, Goal, Score, FrameDimensions, Blob
+from ..pipe.BaseProcess import Msg, BaseProcess
 from ..utils import generate_processor_switches
 
 TEXT_SCALE = 0.8
@@ -56,15 +56,15 @@ def r_text(frame, text: str, x: int, y: int, scale: float, color=GREEN, size: in
 def r_ball(frame, b: Blob, scale) -> None:
     [x, y, w, h] = b.bbox
 
-    # minimum = scale * 9
-    # maximum = scale * 33
+    minimum = scale * 9
+    maximum = scale * 33
     # only proceed if the radius meets a minimum size
     # if minimum < w < maximum and minimum < h < maximum:
-        # draw the circle and centroid on the frame,
-        # then update the list of tracked points
-        # cv2.circle(frame, center, 5, (0, 0, 255), -1)
+    #     draw the circle and centroid on the frame,
+    #     then update the list of tracked points
+    #     cv2.circle(frame, center, 5, (0, 0, 255), -1)
     cv2.rectangle(frame, (x, y), (x + w, y + h), GREEN, 1)
-        # cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
+    #     cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
 
 
 def r_goal(frame, g: Goal) -> None:
@@ -89,18 +89,19 @@ def r_track(frame, ball_track, scale) -> None:
         cv2.line(frame, ball_track[i - 1], ball_track[i], (b, g, r), thickness)
 
 
-class Renderer:
-    def __init__(self, dims: FrameDimensions, headless=False, useGPU: bool = False, **kwargs):
+class Renderer(BaseProcess):
+    def close(self):
+        pass
+
+    def __init__(self, dims: FrameDimensions, headless=False, useGPU: bool = False, *args, **kwargs):
+        super().__init__(name="Renderer")
         self.dims = dims
         self.headless = headless
         self.kwargs = kwargs
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
-        self.out = pl.process.IterableQueue()
 
-    def stop(self) -> None:
-        self.out.stop()
-
-    def render(self, analyze_result: AnalyzeResult) -> AnalyzeResult:
+    def process(self, msg: Msg) -> Msg:
+        analyze_result = msg.kwargs['result']
         info = analyze_result.info
         try:
             if not self.headless:
@@ -118,11 +119,11 @@ class Renderer:
                 r_track(f, track, self.dims.scale)
                 r_score(f, score, self.dims)
                 r_info(f, self.dims, info)
-                self.out.put_nowait(self.iproc(f))
+                return Msg(kwargs={"result": self.iproc(f)})
             else:
-                self.out.put_nowait(" - ".join([f"{label}: {text}" for label, text in info]))
+                return Msg(kwargs={"result": " - ".join([f"{label}: {text}" for label, text in info])})
 
         except Exception as e:
             logging.error(f"Error in renderer {e}")
             traceback.print_exc()
-        return analyze_result
+        return Msg(analyze_result)

@@ -1,16 +1,16 @@
 import logging
+from multiprocessing import Queue
 
 import cv2
 import numpy as np
-import pypeln as pl
-from pypeln import BaseStage
 
 from .analyze import Analyzer
-from ..models import Mask, FrameDimensions, BallConfig, rgb2hsv, GoalConfig, Frame
 from .preprocess import PreProcessor
 from .render import Renderer
 from .tracker import Tracker
-from ..pipe import Pipeline
+from ..models import Mask, FrameDimensions, BallConfig, rgb2hsv, GoalConfig, Frame
+from ..pipe.BaseProcess import Msg
+from ..pipe.Pipe import Pipe
 
 
 def dim(frame) -> [int, int]:
@@ -55,58 +55,45 @@ def generate_frame_mask(width, height) -> Mask:
     return frame_mask
 
 
-class Tracking(Pipeline):
-
-    def _stop(self):
-        self.preprocessor.stop()
-        self.tracker.stop()
-        self.analyzer.stop()
-        self.renderer.stop()
-        self.frame_queue.stop()
+class Tracking:
 
     def __init__(self, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, headless=False, **kwargs):
         super().__init__()
-        self.frame_queue = pl.process.IterableQueue()
         self.calibration = kwargs.get('calibration')
         self.dims = dims
         width, height = dims.scaled
         mask = generate_frame_mask(width, height)
-        use_gpu = kwargs.get('gpu')
-        self.preprocessor = PreProcessor(goal_config, mask=mask, headless=headless, useGPU=('preprocess' in use_gpu), **kwargs)
-        self.tracker = Tracker(ball_config, useGPU=('tracker' in use_gpu), **kwargs)
+        self.preprocessor = PreProcessor(goal_config, mask=mask, headless=headless, useGPU=kwargs.get('preprocess-gpu'),
+                                         **kwargs)
+        self.tracker = Tracker(ball_config, useGPU=kwargs.get('tracker-gpu'), **kwargs)
         self.analyzer = Analyzer(**kwargs)
-        self.renderer = Renderer(dims, headless=headless, useGPU=('render' in use_gpu), **kwargs)
-        self.build()
+        self.renderer = Renderer(dims, headless=headless, useGPU=kwargs.get('render-gpu'), **kwargs)
+
+        self.pipe = Pipe([self.preprocessor, self.tracker, self.analyzer, self.renderer])
+        self.frame_queue = self.pipe.input
+
+    def start(self):
+        self.pipe.start()
+
+    def stop(self):
+        self.pipe.stop()
 
     @property
-    def output(self) -> pl.process.IterableQueue:
-        return self.renderer.out
+    def output(self) -> Queue:
+        return self.pipe.output
 
     @property
-    def calibration_output(self) -> pl.process.IterableQueue | None:
+    def calibration_output(self) -> Queue:
         if self.calibration == "ball":
             return self.tracker.calibration_out
         elif self.calibration == "goal":
             return self.preprocessor.calibration_out
-        return None
 
     def config_input(self, config) -> None:
         if self.calibration == "ball":
-            self.tracker.config_input(config)
+            return self.tracker.config_input(config)
         elif self.calibration == "goal":
-            self.preprocessor.config_input(config)
-
-    def _build(self) -> BaseStage:
-        return (
-                self.frame_queue
-                | pl.process.map(self.preprocessor.process)
-                | pl.process.map(self.tracker.track)
-                | pl.process.map(self.analyzer.analyze)
-                | pl.process.map(self.renderer.render)
-                # | pl.process.each(self.log)
-                | pl.thread.filter(lambda x: False)
-                | list
-        )
+            return self.preprocessor.config_input(config)
 
     def track(self, frame: Frame) -> None:
-        self.frame_queue.put(frame)
+        self.frame_queue.put_nowait(Msg(kwargs={'frame': frame}))

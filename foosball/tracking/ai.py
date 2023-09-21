@@ -12,6 +12,7 @@ from ..display.cv import OpenCVDisplay, get_slider_config, add_config_input, res
 
 BLANKS = (' ' * 80)
 
+
 class AI:
 
     def __init__(self, cap, dis, *args, **kwargs):
@@ -94,7 +95,8 @@ class AI:
                         self.adjust_calibration()
                         self.tracking.track(f)
                         try:
-                            f = self.tracking.output.get(block=False)
+                            msg = self.tracking.output.get_nowait()
+                            f = msg.kwargs['result']
                             self.fps.stop()
                             fps = int(self.fps.fps())
                             if not self.headless:
@@ -109,7 +111,10 @@ class AI:
                         except Empty:
                             logging.debug("No new frame")
                             pass
+                    elif self.display.render(callbacks=callbacks):
+                        break
                 else:
+                    logging.debug("No frame. Shutting down")
                     break
             except Exception as e:
                 logging.error(f"Error in stream {e}")

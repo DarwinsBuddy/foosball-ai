@@ -1,12 +1,13 @@
 import logging
 import traceback
 from enum import Enum
+from multiprocessing import Queue
 from queue import Empty
 
 import cv2
 import numpy as np
-import pypeln as pl
 
+from ..pipe.BaseProcess import BaseProcess, Msg
 from ..utils import ensure_cpu, generate_processor_switches
 from .colordetection import detect_goals
 from ..arUcos import calibration, Aruco
@@ -35,11 +36,12 @@ def pad_rect(rectangle: Rect, xpad: int, ypad: int) -> Rect:
     )
 
 
-class PreProcessor:
+class PreProcessor(BaseProcess):
     def __init__(self, goal_config: GoalConfig, headless=True, mask=None, used_markers=None,
                  redetect_markers_frames: int = 60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
                  aruco_params=cv2.aruco.DetectorParameters(), xpad: int = 50, ypad: int = 20,
                  goal_change_threshold: float = 0.95, useGPU: bool = False, **kwargs):
+        super().__init__(name="Preprocess")
         self.goal_change_threshold = goal_change_threshold
         self.redetect_markers_frame_threshold = redetect_markers_frames
         if used_markers is None:
@@ -60,19 +62,17 @@ class PreProcessor:
         self.calibration = kwargs.get('calibration')
         self.verbose = kwargs.get('verbose')
         self.goals_calibration = self.calibration == "goal"
-        self.calibration_out = pl.process.IterableQueue() if self.goals_calibration else None
-        self.config_in = pl.process.IterableQueue() if self.goals_calibration else None
+        self.calibration_out = Queue() if self.goals_calibration else None
+        self.config_in = Queue() if self.goals_calibration else None
 
     def config_input(self, config: GoalConfig) -> None:
         if self.goals_calibration:
             self.config_in.put_nowait(config)
 
-    def stop(self) -> None:
-        logging.debug("Stopping preprocessor...")
+    def close(self) -> None:
         if self.goals_calibration:
-            self.config_in.stop()
-            self.calibration_out.stop()
-        logging.debug("Stopped preprocessor")
+            self.config_in.close()
+            self.calibration_out.close()
 
     def detect_markers(self, frame: Frame) -> list[Aruco]:
         img_gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
@@ -84,7 +84,8 @@ class PreProcessor:
         """
         return frame if self.mask is None else cv2.bitwise_and(frame, frame, mask=self.mask)
 
-    def process(self, frame: Frame) -> PreprocessResult:
+    def process(self, msg: Msg) -> Msg:
+        frame = msg.kwargs['frame']
         frame = self.proc(frame)
         preprocessed = frame
         info = []
@@ -134,7 +135,7 @@ class PreProcessor:
         except Exception as e:
             logging.error(f"Error in preprocess {e}")
             traceback.print_exc()
-        return PreprocessResult(self.iproc(frame), self.iproc(preprocessed), self.homography_matrix, self.goals, info)
+        return Msg(kwargs={"result": PreprocessResult(self.iproc(frame), self.iproc(preprocessed), self.homography_matrix, self.goals, info)})
 
     @staticmethod
     def corners2pt(corners) -> [int, int]:

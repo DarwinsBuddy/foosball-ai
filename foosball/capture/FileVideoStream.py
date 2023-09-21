@@ -1,7 +1,8 @@
+from queue import Empty, Full
 from threading import Thread
 import cv2
 import time
-from queue import Queue, Full, Empty
+from multiprocessing import Queue
 
 
 class FileVideoStream:

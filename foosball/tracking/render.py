@@ -34,23 +34,24 @@ def r_info(frame, dims: FrameDimensions, info: Info) -> None:
     cv2.rectangle(frame, (0, dims.scaled[1] - height), (dims.scaled[0], dims.scaled[1]), (0, 0, 0), -1)
     for (i, (k, v)) in enumerate(info):
         txt = "{}: {}".format(k, v)
-        x = (int(i / 2) * 170) + 10
-        y = dims.scaled[1] - ((i % 2) * 20)
-        r_text(frame, txt, x, y - int(TEXT_SCALE * 20), dims.scale, text_color(txt, v))
+        x = (int(i / 2) * 200) + 10
+        y = dims.scaled[1] - ((i % 2) * 30)
+        r_text(frame, txt, x, y - int(TEXT_SCALE * 20), dims.scale, text_color(txt, v), 2)
 
 
 def r_score(frame, score: Score, dims: FrameDimensions) -> None:
     text = f"{score.blue} : {score.red}"
-    textsize = cv2.getTextSize(text, FONT, 1, 2)[0]
-    p = 10
+    textsize = cv2.getTextSize(text, FONT, 1, 4)[0]
+    px = 30
+    py = 10
     x = int((dims.scaled[0] - textsize[0]) / 2)
     y = 0
-    cv2.rectangle(frame, (x, y), (x+textsize[0]+p, y+textsize[1]+p), (0, 0, 0), -1)
-    r_text(frame, text,  x + int(p/2), y + textsize[1] + int(p/2), dims.scale, GREEN, 2)
+    cv2.rectangle(frame, (x, y), (x+textsize[0]+px, y+textsize[1]+py), (0, 0, 0), -1)
+    r_text(frame, text,  x + int(px/4), y + textsize[1] + int(py/2), dims.scale, GREEN, 4)
 
 
 def r_text(frame, text: str, x: int, y: int, scale: float, color=GREEN, size: int = 0):
-    cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, TEXT_SCALE - scale + (size * 0.2), color, 1)
+    cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, TEXT_SCALE, color, 1)
 
 
 def r_ball(frame, b: Blob, scale) -> None:

@@ -8,11 +8,18 @@ from vidgear.gears import VideoGear
 
 class GearCapture:
 
-    def __init__(self, video=None):
+    def __init__(self, video=None, **kwargs):
+        self.source = 'file' if isinstance(video, str) else 'cam'
         # if a video path was not supplied, grab the reference
         # to the webcam
-        if video is None:
-            self.cap = VideoStream(src=1).start()
+        if video is None or type(video) == int:
+            resolution = kwargs.get('resolution', (640, 480))
+            options = {
+                 "CAP_PROP_FRAME_WIDTH": resolution[0],  # resolution 320x240
+                 "CAP_PROP_FRAME_HEIGHT": resolution[1],
+                 "CAP_PROP_FPS": kwargs.get('framerate'),  # framerate 60fps
+            }
+            self.cap = VideoGear(source=video or 0, logging=True, **options).start()
             # otherwise, grab a reference to the video file
         else:
             options = {
@@ -31,8 +38,14 @@ class GearCapture:
     def stop(self):
         self.cap.stop()
 
+    def stream(self):
+        if self.source == 'file':
+            return self.cap.stream.stream
+        else:
+            return self.cap.stream.stream
+
     def dim(self):
-        width = int(self.cap.stream.stream.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(self.cap.stream.stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        width = int(self.stream().get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.stream().get(cv2.CAP_PROP_FRAME_HEIGHT))
 
         return [width, height]

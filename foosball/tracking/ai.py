@@ -95,7 +95,7 @@ class AI:
                         self.adjust_calibration()
                         self.tracking.track(f)
                         try:
-                            msg = self.tracking.output.get_nowait()
+                            msg = self.tracking.output.get(block=False)
                             f = msg.kwargs['result']
                             self.fps.stop()
                             fps = int(self.fps.fps())
@@ -139,8 +139,8 @@ class AI:
             color = (0, 255, 127)
         else:
             color = (100, 0, 255)
-        r_text(frame, f"FPS: {frames_per_second}", self.dims.scaled[0] - 60, self.dims.scaled[1] - 10,
-               self.dims.scale, color)
+        r_text(frame, f"FPS: {frames_per_second}", self.dims.scaled[0] - 100, self.dims.scaled[1] - 10,
+               self.dims.scale, color, 4)
 
     def render_calibration(self):
         try:

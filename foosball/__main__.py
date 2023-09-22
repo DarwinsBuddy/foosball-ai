@@ -57,7 +57,11 @@ if __name__ == '__main__':
     if kwargs.get('arucoBoard'):
         print_aruco_board()
         print("Aruco board printed")
-    elif kwargs.get('file'):
+    elif kwargs.get('calibration') == 'cam':
+        calibrate_camera(camera_id=kwargs.get('cameraId'), calibration_video_path=kwargs.get('calibrationVideo'),
+                         calibration_images_path=kwargs.get('calibrationImagePath'), headless=False,
+                         sample_size=kwargs.get('calibrationSampleSize'))
+    elif kwargs.get('file') or kwargs.get('cameraId') is not None:
         if not kwargs.get('headless'):
             if kwargs.get('display') == 'cv':
                 from .display.cv import OpenCVDisplay
@@ -71,14 +75,14 @@ if __name__ == '__main__':
             else:
                 usage_and_exit()
 
+        source = kwargs.get('file') or kwargs.get('cameraId')
         if kwargs.get('capture') == 'gear':
             from .capture.gearcapture import GearCapture
-
-            cap = GearCapture(kwargs.get('file'))
+            cap = GearCapture(source, framerate=32, resolution=(1280, 720))
         elif kwargs.get('capture') == 'imutils':
             from .capture.filecapture import FileCapture
 
-            cap = FileCapture(kwargs.get('file'))
+            cap = FileCapture(source)
         else:
             usage_and_exit()
         print(kwargs)
@@ -91,9 +95,5 @@ if __name__ == '__main__':
 
         signal.signal(signal.SIGINT, signal_handler)
         ai.process_video()
-    elif kwargs.get('calibration') == 'cam':
-        calibrate_camera(camera_id=kwargs.get('cameraId'), calibration_video_path=kwargs.get('calibrationVideo'),
-                         calibration_images_path=kwargs.get('calibrationImagePath'), headless=False,
-                         sample_size=kwargs.get('calibrationSampleSize'))
     else:
         usage_and_exit()

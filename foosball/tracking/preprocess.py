@@ -98,14 +98,14 @@ class PreProcessor(BaseProcess):
                     pass
 
             trigger_marker_detection = self.frames_since_last_marker_detection == 0 or len(self.markers) == 0
-            info = [(f'{"? " if trigger_marker_detection else ""}Markers', f'{len(self.markers)}')]
+            info = [(f'{"? " if trigger_marker_detection else ""}Markers', f'{len(self.markers)}'.ljust(10, ' '))]
             if not self.kwargs.get('off'):
                 if trigger_marker_detection:
                     # detect markers
                     markers = self.detect_markers(frame)
                     # check if there are exactly 4 markers present
                     markers = [m for m in markers if m.id in self.used_markers]
-                    info = [(f'{"! " if len(markers) != 4 else ""}Markers', f'{len(markers)}')]
+                    info = [(f'{"! " if len(markers) != 4 else ""}Markers', f'{len(markers)}'.ljust(10, ' '))]
                     # logging.debug(f"markers {[list(m.id)[0] for m in markers]}")
                     if len(markers) == 4:
                         self.markers = markers
@@ -132,9 +132,10 @@ class PreProcessor(BaseProcess):
                         # TODO: distinguish between red or blue goal (instead of left and right)
                     info.append(['goals', f'{"detected" if self.goals is not None else "fail"}'])
                 else:
+                    info.append(['goals', 'none'.rjust(8, ' ')])
                     preprocessed = self.mask_frame(frame)
         except Exception as e:
-            logger.error(f"Error in preprocess {e}")
+            self.logger.error(f"Error in preprocess {e}")
             traceback.print_exc()
         return Msg(kwargs={"result": PreprocessResult(self.iproc(frame), self.iproc(preprocessed), self.homography_matrix, self.goals, info)})
 

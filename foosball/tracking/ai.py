@@ -5,7 +5,7 @@ from queue import Empty
 from imutils.video import FPS
 
 from . import Tracking, get_ball_config, get_goal_config
-from .render import r_text
+from .render import r_text, BLACK
 from ..models import FrameDimensions, ScaleDirection, Frame
 from ..utils import scale
 from ..display.cv import OpenCVDisplay, get_slider_config, add_config_input, reset_config, store_config, Key
@@ -134,8 +134,7 @@ class AI:
             color = (0, 255, 127)
         else:
             color = (100, 0, 255)
-        r_text(frame, f"FPS: {frames_per_second}", self.dims.scaled[0] - 100, self.dims.scaled[1] - 10,
-               self.dims.scale, color, 4)
+        r_text(frame, f"FPS: {frames_per_second}", frame.shape[1], 0, color, background=BLACK, text_scale=0.5, thickness=1, padding=(20, 20), ground_zero='tr')
 
     def render_calibration(self):
         try:

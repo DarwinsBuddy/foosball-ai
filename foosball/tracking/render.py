@@ -16,13 +16,14 @@ FONT = cv2.FONT_HERSHEY_SIMPLEX
 # BGR
 GREEN = (0, 255, 0)
 GRAY = (100, 100, 100)
-WHITE = (0, 0, 0)
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
 RED = (0, 0, 255)
 ORANGE = (0, 143, 252)
 
 
 def text_color(key, value):
-    if value == "off" or value == "fail" or key.startswith("!"):
+    if value.strip() in ["off", "fail", "none"] or key.startswith("!"):
         return GRAY
     elif key.startswith("?"):
         return ORANGE
@@ -30,44 +31,50 @@ def text_color(key, value):
         return GREEN
 
 
-def r_info(frame, dims: FrameDimensions, info: Info) -> None:
+def r_info(frame, shape: tuple[int, int, int], info: Info, text_scale=1.0, thickness=1.0) -> None:
+    [height, width, channels] = shape
     # loop over the info tuples and draw them on our frame
-    height = int(len(info) / 2) * 30
-    cv2.rectangle(frame, (0, dims.scaled[1] - height), (dims.scaled[0], dims.scaled[1]), (0, 0, 0), -1)
-    for (i, (k, v)) in enumerate(info):
-        txt = "{}: {}".format(k, v)
-        x = (int(i / 2) * 200) + 10
-        y = dims.scaled[1] - ((i % 2) * 30)
-        r_text(frame, txt, x, y - int(TEXT_SCALE * 20), dims.scale, text_color(txt, v), 2)
+    x = 0
+    y = height
+    h = 0
+    w = 0
+    for (key, value) in info:
+        text = "{}: {}".format(key, value)
+        if w + x > width:
+            cv2.rectangle(frame, (x, y), (width, y - h), BLACK, -1) # fill
+            x = 0
+            y = y - h
+        [x0, _, w, h] = r_text(frame, text, x, y, text_color(text, value), text_scale=text_scale, thickness=thickness, background=BLACK, padding=(20, 20), ground_zero='bl')
+        x = x0 + w
+    cv2.rectangle(frame, (x, y), (width, y - h), BLACK, -1)  # fill
 
 
-def r_score(frame, score: Score, dims: FrameDimensions) -> None:
+def r_text(frame, text: str, x: int, y: int, color=GREEN, text_scale=1.0, thickness=1.0, background=None, padding=(0, 0), ground_zero='bl'):
+    horizontal = ground_zero[1]
+    vertical = ground_zero[0]
+    [text_width, text_height] = cv2.getTextSize(text, FONT, text_scale, thickness)[0]
+    x0 = x - text_width if horizontal == 'r' else x
+    y0 = y + text_height if vertical == 't' else y - text_height
+    roi = (x0, y0, text_width, text_height)
+    if background is not None:
+        y0 = y0 - padding[1]
+        x0 = x0 - padding[0] if horizontal == 'r' else x0
+        x1 = x0 + text_width + padding[0]
+        y1 = y0 + text_height + padding[1]
+        cv2.rectangle(frame, (x0, y0), (x1, y1), BLACK, -1)
+        roi = (x0, y0, text_width + padding[0], text_height + padding[1])
+    cv2.putText(frame, text, (x0 + int(padding[0]/2), y0 + text_height + int(padding[1]/2)), FONT, text_scale, color, thickness)
+    return roi
+
+
+def r_score(frame, score: Score, text_scale=1, thickness=1) -> None:
     text = f"{score.blue} : {score.red}"
-    textsize = cv2.getTextSize(text, FONT, 1, 4)[0]
-    px = 30
-    py = 10
-    x = int((dims.scaled[0] - textsize[0]) / 2)
-    y = 0
-    cv2.rectangle(frame, (x, y), (x+textsize[0]+px, y+textsize[1]+py), (0, 0, 0), -1)
-    r_text(frame, text,  x + int(px/4), y + textsize[1] + int(py/2), dims.scale, GREEN, 4)
+    r_text(frame, text,  0, 0, GREEN, background=BLACK, padding=(5, 20), text_scale=text_scale, thickness=thickness, ground_zero='tl')
 
 
-def r_text(frame, text: str, x: int, y: int, scale: float, color=GREEN, size: int = 0):
-    cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, TEXT_SCALE, color, 1)
-
-
-def r_ball(frame, b: Blob, scale) -> None:
+def r_ball(frame, b: Blob) -> None:
     [x, y, w, h] = b.bbox
-
-    minimum = scale * 9
-    maximum = scale * 33
-    # only proceed if the radius meets a minimum size
-    # if minimum < w < maximum and minimum < h < maximum:
-    #     draw the circle and centroid on the frame,
-    #     then update the list of tracked points
-    #     cv2.circle(frame, center, 5, (0, 0, 255), -1)
     cv2.rectangle(frame, (x, y), (x + w, y + h), GREEN, 1)
-    #     cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
 
 
 def r_goal(frame, g: Goal) -> None:
@@ -108,6 +115,7 @@ class Renderer(BaseProcess):
         info = analyze_result.info
         try:
             if not self.headless:
+                shape = analyze_result.frame.shape
                 f = self.proc(analyze_result.frame)
                 ball = analyze_result.ball
                 goals = analyze_result.goals
@@ -115,13 +123,13 @@ class Renderer(BaseProcess):
                 score = analyze_result.score
 
                 if ball is not None:
-                    r_ball(f, ball, self.dims.scale)
+                    r_ball(f, ball)
                 if goals is not None:
                     r_goal(f, goals.left)
                     r_goal(f, goals.right)
                 r_track(f, track, self.dims.scale)
-                r_score(f, score, self.dims)
-                r_info(f, self.dims, info)
+                r_score(f, score, text_scale=1, thickness=4)
+                r_info(f, shape, info, text_scale=0.5, thickness=1)
                 return Msg(kwargs={"result": self.iproc(f)})
             else:
                 return Msg(kwargs={"result": " - ".join([f"{label}: {text}" for label, text in info])})

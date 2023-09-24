@@ -49,7 +49,7 @@ class Tracker(BaseProcess):
 
     def get_info(self, ball_track: Track) -> Info:
         info = [
-            ("Track length", f"{sum([1 for p in ball_track or [] if p is not None])}"),
+            ("Track length", f"{str(sum([1 for p in ball_track or [] if p is not None])).rjust(2, ' ')}"),
             ("Calibration", f"{self.calibration if self.calibration is not None else 'off'}"),
             ("Tracker", f"{'off' if self.off else 'on'}")
         ]

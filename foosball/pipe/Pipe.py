@@ -4,13 +4,13 @@ from queue import Empty
 
 from foosball.pipe import BaseProcess
 
-
 SENTINEL = None
+
 
 def clear(q: Queue):
     try:
         while True:
-            q.get_nowait()
+            q.get(block=True, timeout=0.1)
     except Empty:
         pass
 
@@ -18,6 +18,7 @@ def clear(q: Queue):
 class Pipe:
     def __init__(self, processes: list[BaseProcess]):
         assert len(processes) > 0
+        self.logger = logging.getLogger("Pipe")
         self.processes: list[BaseProcess] = processes
         self.queues = [Queue() for i in range(0, len(processes) + 1)]
         self.build()
@@ -28,10 +29,10 @@ class Pipe:
             self.processes[i].set_output(self.queues[i + 1])
 
     def start(self):
-        logging.debug("Starting pipe...")
+        self.logger.debug("Starting pipe...")
         for p in self.processes:
             p.start()
-        logging.debug("Started pipe")
+        self.logger.debug("Started  pipe")
 
     @property
     def output(self):
@@ -42,18 +43,16 @@ class Pipe:
         return self.queues[0]
 
     def stop(self):
-        logging.debug("Stopping pipe...")
-        logging.debug("stopping...")
-        #for p in self.processes:
-        #    p.stop()
+        self.logger.debug("Stopping pipe...")
         self.queues[0].put_nowait(SENTINEL)
-        logging.debug("draining...")
-        #for q in self.queues:
-        #    clear(q)
-        #    q.close()
-        logging.debug("joining...")
-        clear(self.queues[-1])
-        for p in self.processes:
+        self.logger.debug("joining...")
+        for i in range(0, len(self.processes) - 1):
+            p = self.processes[i]
             p.join()
-
-        logging.debug("Stopped pipe")
+            self.logger.debug(f"joined   {p.name}")
+        # empty the last queue
+        clear(self.queues[-1])
+        # join the last process
+        self.processes[-1].join()
+        self.logger.debug(f"joined   {self.processes[-1].name}")
+        self.logger.debug("Stopped  pipe")

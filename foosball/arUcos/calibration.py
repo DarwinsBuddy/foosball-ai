@@ -18,6 +18,8 @@ from .models import Aruco
 from ..models import Frame
 from ..utils import ensure_cpu
 
+
+logger = logging.getLogger(__name__)
 DEFAULT_MARKER_SEPARATION_CM = 1.0
 
 DEFAULT_MARKER_LENGTH_CM = 5.0
@@ -57,7 +59,7 @@ class Calibration:
             corners_list = corners if len(corners_list) == 0 else np.vstack((corners_list, corners))
             id_list = ids if len(id_list) == 0 else np.vstack((id_list, ids))
             counter.append(len(markers))
-        logging.debug("Calibrating camera ....")
+        logger.debug("Calibrating camera ....")
         if len(corners_list) > 0:
             try:
                 ret, mtx, dist, rvecs, tvecs = aruco.calibrateCameraAruco(corners_list, id_list, np.array(counter),
@@ -66,9 +68,9 @@ class Calibration:
                 self.dist_coefficients = dist
                 return True
             except cv2.error:
-                logging.error("Could not calibrate camera. Exiting...")
+                logger.error("Could not calibrate camera. Exiting...")
         else:
-            logging.error("No arUcos detected in any image. Exiting...")
+            logger.error("No arUcos detected in any image. Exiting...")
         return False
 
     def add_image_markers(self, arucos: List[Aruco]):
@@ -129,7 +131,7 @@ def detect_markers(image, detector: aruco.ArucoDetector) -> list[Aruco]:
     corners, ids, rejected_img_points = detector.detectMarkers(image)
     ids = ensure_cpu(ids)
     # if rejected_img_points is not None:
-    #     logging.debug(f"Marker detection rejected {len(rejected_img_points)}")
+    #     logger.debug(f"Marker detection rejected {len(rejected_img_points)}")
     if ids is not None:
         return [Aruco(np.array(i[0]), c) for i, c in list(zip(ids, corners))]
     else:
@@ -191,10 +193,10 @@ def calibrate_camera(camera_id=None, calibration_video_path=None, calibration_im
             img = cv2.imread(str(os.path.join(path, fn)))
             img_list.append(img)
             # h, w, c = img.shape
-        logging.debug(f'Calibrating {len(img_list)} images')
+        logger.debug(f'Calibrating {len(img_list)} images')
         calib = Calibration(board)
         for idx, im in enumerate(tqdm(img_list)):
-            logging.debug(f"Calibrating {idx} {fns[idx]}")
+            logger.debug(f"Calibrating {idx} {fns[idx]}")
             img_gray = cv2.cvtColor(im, cv2.COLOR_RGB2GRAY)
             shape = img_gray.shape
             if not headless:
@@ -224,8 +226,8 @@ def calibrate_camera(camera_id=None, calibration_video_path=None, calibration_im
             ret, img = camera.read()
         if calib.recalibrate(shape, sample_size):
             calib.store()
-            logging.debug(calib.as_string)
+            logger.debug(calib.as_string)
     else:
-        logging.error("Please specify calibration options. Neither image path nor camera_id specified")
+        logger.error("Please specify calibration options. Neither image path nor camera_id specified")
 
     cv2.destroyAllWindows()

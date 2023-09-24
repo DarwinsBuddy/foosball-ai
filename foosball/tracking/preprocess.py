@@ -13,6 +13,7 @@ from .colordetection import detect_goals
 from ..arUcos import calibration, Aruco
 from ..models import Frame, PreprocessResult, Point, Rect, GoalConfig, Blob, Goals
 
+
 TEXT_SCALE = 0.8
 TEXT_COLOR = (0, 255, 0)
 
@@ -133,7 +134,7 @@ class PreProcessor(BaseProcess):
                 else:
                     preprocessed = self.mask_frame(frame)
         except Exception as e:
-            logging.error(f"Error in preprocess {e}")
+            logger.error(f"Error in preprocess {e}")
             traceback.print_exc()
         return Msg(kwargs={"result": PreprocessResult(self.iproc(frame), self.iproc(preprocessed), self.homography_matrix, self.goals, info)})
 

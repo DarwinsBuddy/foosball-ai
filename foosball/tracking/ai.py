@@ -12,12 +12,12 @@ from ..display.cv import OpenCVDisplay, get_slider_config, add_config_input, res
 
 BLANKS = (' ' * 80)
 
-
 class AI:
 
     def __init__(self, cap, dis, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
+        self.logger = logging.getLogger("AI")
         self.cap = cap
         self.headless = kwargs.get('headless')
         self.display = dis if not self.headless else None
@@ -59,16 +59,15 @@ class AI:
 
         def pause():
             self.paused = not self.paused
-            logging.info("PAUSE" if self.paused else "RESUME")
+            self.logger.info("PAUSE" if self.paused else "RESUME")
             return False
 
         def step_frame():
             if not self.step and self.paused:
-                logging.info("STEP")
+                self.logger.info("STEP")
                 self.step = True
             return False
 
-        logging.debug("Starting foosball-ai...")
         self.tracking.start()
 
         callbacks = {
@@ -109,27 +108,23 @@ class AI:
                             else:
                                 print(f"{f} - FPS: {fps} {BLANKS}", end="\r")
                         except Empty:
-                            logging.debug("No new frame")
+                            # logger.debug("No new frame")
                             pass
                     elif self.display.render(callbacks=callbacks):
                         break
                 else:
-                    logging.debug("No frame. Shutting down")
+                    self.logger.debug("End of stream. Shutting down...")
                     break
             except Exception as e:
-                logging.error(f"Error in stream {e}")
+                self.logger.error(f"Error in stream {e}")
                 traceback.print_exc()
 
-        logging.debug("Stopping foosball-ai...")
-        self.tracking.stop()
         self.cap.stop()
+        self.tracking.stop()
         if not self.headless:
             self.display.stop()
         if self.calibration is not None:
             self.calibration_display.stop()
-        logging.debug("Stopped foosball-ai")
-        self.tracking.output.clear()
-        self.tracking.frame_queue.clear()
 
     def render_fps(self, frame: Frame, fps: int):
         frames_per_second = fps

@@ -1,10 +1,8 @@
 import logging
-
 import cv2
-from imutils.video import VideoStream
-
 from vidgear.gears import VideoGear
 
+logger = logging.getLogger(__name__)
 
 class GearCapture:
 
@@ -28,7 +26,7 @@ class GearCapture:
                 # "CAP_PROP_FPS": 60,  # framerate 60fps
             }
             self.cap = VideoGear(source=video, logging=False, **options).start()
-            logging.info(f"framerate = {self.cap.framerate}")
+            logger.info(f"framerate = {self.cap.framerate}")
 
         self.is_file_capture = video is not None
 

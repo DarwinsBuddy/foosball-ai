@@ -5,6 +5,7 @@ import imutils
 import numpy as np
 
 from ..models import BallDetectionResult, Frame, Blob, BallConfig, GoalsDetectionResult, Goals, Point, GoalConfig, Goal
+logger = logging.getLogger(__name__)
 
 
 def detect_ball(frame, bounds: BallConfig) -> BallDetectionResult:
@@ -13,7 +14,7 @@ def detect_ball(frame, bounds: BallConfig) -> BallDetectionResult:
         detected_blob = detect_largest_blob(detection_frame)
         return BallDetectionResult(ball=detected_blob, frame=detection_frame)
     else:
-        logging.error("Ball Detection not possible. Config is None")
+        logger.error("Ball Detection not possible. Config is None")
 
 
 def detect_goals(frame, config: GoalConfig) -> GoalsDetectionResult:
@@ -25,7 +26,7 @@ def detect_goals(frame, config: GoalConfig) -> GoalsDetectionResult:
         else:
             return GoalsDetectionResult(goals=None, frame=detection_frame)
     else:
-        logging.error("Goal Detection not possible. config is None")
+        logger.error("Goal Detection not possible. config is None")
 
 
 def filter_color_range(frame, bounds: BallConfig) -> Frame:
@@ -71,7 +72,7 @@ def filter_gray_range(frame, config: GoalConfig) -> Frame:
         x = cv2.bitwise_and(f, f, mask=final_mask)
         return cv2.dilate(x, kernel, iterations=2)
     except Exception as e:
-        logging.error(f"Exception: {e}\n\n")
+        logger.error(f"Exception: {e}\n\n")
         return frame
 
 
@@ -121,7 +122,7 @@ def detect_goal_blobs(img) -> list[Goal] | None:
         # centroid
         largest_contours = sorted(cnts, key=cv2.contourArea, reverse=True)[:2]
         if len(largest_contours) != 2:
-            logging.error("Could not detect 2 goals")
+            logger.error("Could not detect 2 goals")
             return None
         centers_and_bboxes = [transform_contour(cnt) for cnt in largest_contours]
         # sort key = x coordinate of the center of mass

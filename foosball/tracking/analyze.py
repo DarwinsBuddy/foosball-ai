@@ -2,10 +2,9 @@ import logging
 import traceback
 from typing import Optional
 
-from ..models import TrackResult, Team, Goals, Score, AnalyzeResult, Track
+from ..models import Team, Goals, Score, AnalyzeResult, Track
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..utils import contains
-
 
 class Analyzer(BaseProcess):
     def close(self):
@@ -37,9 +36,9 @@ class Analyzer(BaseProcess):
             team = self.goal_shot(goals, track) if None not in [goals, track, self.last_track] else None
             self.score.inc(team)
             if team is not None:
-                print(f"GOAL Team:{team} - {self.score.red} : {self.score.blue}", end="\n")
+                self.logger.info(f"GOAL Team:{team} - {self.score.red} : {self.score.blue}")
             self.last_track = track
         except Exception as e:
-            logging.error("Error in analyzer ", e)
+            self.logger.error("Error in analyzer ", e)
             traceback.print_exc()
         return Msg(kwargs={"result": AnalyzeResult(score=self.score, ball=ball, goals=goals, frame=frame, info=info, ball_track=track)})

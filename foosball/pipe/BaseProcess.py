@@ -2,7 +2,6 @@ import abc
 import dataclasses
 import logging
 import multiprocessing
-import time
 import traceback
 from queue import Empty
 
@@ -27,6 +26,7 @@ class BaseProcess(multiprocessing.Process):
     def __init__(self, *args, **kwargs):
         super().__init__(daemon=True, *args, **kwargs)
         self.args = args
+        self.logger = logging.getLogger(kwargs.get('name') or __name__)
         self.kwargs = kwargs
         self.stop_event: multiprocessing.Event = multiprocessing.Event()
 
@@ -53,12 +53,12 @@ class BaseProcess(multiprocessing.Process):
         pass
 
     def stop(self):
-        pass # self.stop_event.set()
+        pass  # self.stop_event.set()
 
     def run(self):
         assert self.inq is not None
         assert self.outq is not None
-        logging.debug(f"Starting {self._name}")
+        self.logger.debug(f"Starting {self._name}")
         while not self.stop_event.is_set():
             try:
                 msg = self.inq.get_nowait()
@@ -69,14 +69,10 @@ class BaseProcess(multiprocessing.Process):
             except Empty:
                 pass
             except Exception as e:
-                logging.error(f"Error in {self._name} - {e}")
+                self.logger.error(f"Error in {self._name} - {e}")
                 traceback.print_exc()
-        logging.debug(f"Stopping {self._name}...")
+        self.logger.debug(f"Stopping {self._name}...")
         self.outq.put_nowait(SENTINEL)
         clear(self.inq)
-        # TODO: come up with a better way of ensuring that downstream process
-        #       drains this outq (their inq) after receiving the SENTINEL poison pill
-        time.sleep(1)
-        clear(self.outq)
         self.close()
-        logging.debug(f"Stopped {self._name}")
+        self.logger.debug(f"Stopped  {self._name}")

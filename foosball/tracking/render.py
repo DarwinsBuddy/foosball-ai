@@ -7,6 +7,8 @@ import numpy as np
 from ..models import Info, Goal, Score, FrameDimensions, Blob
 from ..pipe.BaseProcess import Msg, BaseProcess
 from ..utils import generate_processor_switches
+logger = logging.getLogger(__name__)
+
 
 TEXT_SCALE = 0.8
 FONT = cv2.FONT_HERSHEY_SIMPLEX
@@ -125,6 +127,6 @@ class Renderer(BaseProcess):
                 return Msg(kwargs={"result": " - ".join([f"{label}: {text}" for label, text in info])})
 
         except Exception as e:
-            logging.error(f"Error in renderer {e}")
+            logger.error(f"Error in renderer {e}")
             traceback.print_exc()
         return Msg(analyze_result)

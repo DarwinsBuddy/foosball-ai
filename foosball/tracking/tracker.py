@@ -5,13 +5,14 @@ from queue import Empty
 
 from .colordetection import detect_ball
 from .preprocess import WarpMode, project_blob
-from ..models import TrackResult, Track, BallConfig, Info, Blob, PreprocessResult, Goals
+from ..models import TrackResult, Track, BallConfig, Info, Blob, Goals
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..utils import generate_processor_switches
+logger = logging.getLogger(__name__)
 
 
 def log(result: TrackResult) -> None:
-    logging.debug(result.info)
+    logger.debug(result.info)
 
 
 class Tracker(BaseProcess):
@@ -99,7 +100,7 @@ class Tracker(BaseProcess):
                 ball_track = self.update_ball_track(ball)
             info = preprocess_result.info + self.get_info(ball_track)
         except Exception as e:
-            logging.error(f"Error in track {e}")
+            logger.error(f"Error in track {e}")
             traceback.print_exc()
         if not self.verbose:
             return Msg(kwargs={"result": TrackResult(preprocess_result.original, goals, ball_track, ball, info)})

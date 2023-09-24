@@ -41,7 +41,7 @@ def get_ball_config(ball: str) -> BallConfig:
     elif ball == 'yellow' or ball == 'y':
         return yellow_ball()
     else:
-        logging.error("Unknown ball color. Falling back to 'orange'")
+        logger.error("Unknown ball color. Falling back to 'orange'")
         return orange_ball()
 
 

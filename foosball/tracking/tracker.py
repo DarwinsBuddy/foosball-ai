@@ -7,6 +7,7 @@ from .colordetection import detect_ball
 from .preprocess import WarpMode, project_blob
 from ..models import TrackResult, Track, BallConfig, Info, Blob, Goals
 from ..pipe.BaseProcess import BaseProcess, Msg
+from ..pipe.Pipe import clear
 from ..utils import generate_processor_switches
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,9 @@ class Tracker(BaseProcess):
 
     def close(self) -> None:
         if self.ball_calibration:
+            clear(self.bounds_in)
             self.bounds_in.close()
+            clear(self.calibration_out)
             self.calibration_out.close()
 
     def update_ball_track(self, detected_ball: Blob) -> Track:

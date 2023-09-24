@@ -10,7 +10,7 @@ SENTINEL = None
 def clear(q: Queue):
     try:
         while True:
-            q.get(block=True, timeout=0.1)
+            q.get(block=True, timeout=0.01)
     except Empty:
         pass
 

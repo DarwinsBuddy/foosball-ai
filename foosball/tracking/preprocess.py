@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 
 from ..pipe.BaseProcess import BaseProcess, Msg
+from ..pipe.Pipe import clear
 from ..utils import ensure_cpu, generate_processor_switches
 from .colordetection import detect_goals
 from ..arUcos import calibration, Aruco
@@ -72,7 +73,9 @@ class PreProcessor(BaseProcess):
 
     def close(self) -> None:
         if self.goals_calibration:
+            clear(self.config_in)
             self.config_in.close()
+            clear(self.calibration_out)
             self.calibration_out.close()
 
     def detect_markers(self, frame: Frame) -> list[Aruco]:

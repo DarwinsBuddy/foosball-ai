@@ -29,6 +29,8 @@ def from_gpu(frame: GPUFrame) -> CPUFrame:
     return frame.get()
 
 
+def relative_change(old_value, new_value):
+    return (new_value / old_value) - 1
 def generate_processor_switches(useGPU: bool = False) -> [Callable[[Frame], Frame], Callable[[Frame], Frame]]:
     if not useGPU:
         return [lambda x: x, lambda x: x]

@@ -9,7 +9,7 @@ import numpy as np
 
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..pipe.Pipe import clear
-from ..utils import ensure_cpu, generate_processor_switches
+from ..utils import ensure_cpu, generate_processor_switches, relative_change
 from .colordetection import detect_goals
 from ..arUcos import calibration, Aruco
 from ..models import Frame, PreprocessResult, Point, Rect, GoalConfig, Blob, Goals
@@ -42,7 +42,7 @@ class PreProcessor(BaseProcess):
     def __init__(self, goal_config: GoalConfig, headless=True, mask=None, used_markers=None,
                  redetect_markers_frames: int = 60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
                  aruco_params=cv2.aruco.DetectorParameters(), xpad: int = 50, ypad: int = 20,
-                 goal_change_threshold: float = 0.95, useGPU: bool = False, **kwargs):
+                 goal_change_threshold: float = 0.10, useGPU: bool = False, **kwargs):
         super().__init__(name="Preprocess")
         self.goal_change_threshold = goal_change_threshold
         self.redetect_markers_frame_threshold = redetect_markers_frames
@@ -126,11 +126,11 @@ class PreProcessor(BaseProcess):
                         if self.goals is None:
                             self.goals = new_goals
                         elif new_goals is not None:
-                            left_change = new_goals.left.area() / self.goals.left.area()
-                            right_change = new_goals.right.area() / self.goals.right.area()
+                            left_change = relative_change(self.goals.left.area(), new_goals.left.area())
+                            right_change = relative_change(self.goals.right.area(), new_goals.right.area())
                             self.goals = Goals(
-                                left=self.goals.left if left_change < self.goal_change_threshold else new_goals.left,
-                                right=self.goals.right if right_change < self.goal_change_threshold else new_goals.right
+                                left=self.goals.left if abs(left_change) < self.goal_change_threshold else new_goals.left,
+                                right=self.goals.right if abs(right_change) < self.goal_change_threshold else new_goals.right
                             )
                         # TODO: distinguish between red or blue goal (instead of left and right)
                     info.append(['goals', f'{"detected" if self.goals is not None else "fail"}'])

@@ -1,4 +1,5 @@
 import logging
+import os.path
 from multiprocessing import Queue
 
 import cv2
@@ -32,17 +33,22 @@ def orange_ball() -> BallConfig:
 
 
 def get_goal_config() -> GoalConfig:
-    return GoalConfig(bounds=[0, 235], invert_frame=True, invert_mask=True)
+    default_config = GoalConfig(bounds=[0, 235], invert_frame=True, invert_mask=True)
+    if os.path.isfile('goal.yaml'):
+        return GoalConfig.load() or default_config
+    return default_config
 
 
 def get_ball_config(ball: str) -> BallConfig:
-    if ball == 'orange' or ball == 'o':
+    if ball == 'yaml':
+        return BallConfig.load() or yellow_ball()
+    elif ball == 'orange' or ball == 'o':
         return orange_ball()
     elif ball == 'yellow' or ball == 'y':
         return yellow_ball()
     else:
-        logger.error("Unknown ball color. Falling back to 'orange'")
-        return orange_ball()
+        logging.error("Unknown ball color. Falling back to 'yellow'")
+        return yellow_ball()
 
 
 def generate_frame_mask(width, height) -> Mask:

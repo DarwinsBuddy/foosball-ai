@@ -8,7 +8,7 @@ from . import Tracking, get_ball_config, get_goal_config
 from .render import r_text, BLACK
 from ..models import FrameDimensions, ScaleDirection, Frame
 from ..utils import scale
-from ..display.cv import OpenCVDisplay, get_slider_config, add_config_input, reset_config, store_config, Key
+from ..display.cv import OpenCVDisplay, get_slider_config, add_config_input, reset_config, Key
 
 BLANKS = (' ' * 80)
 
@@ -50,11 +50,13 @@ class AI:
 
     def process_video(self):
         def reset_calibration():
-            reset_config(self.calibration, self.calibration_config())
+            if self.calibration is not None:
+                reset_config(self.calibration, self.calibration_config())
             return False
 
         def store_calibration():
-            store_config(self.calibration, self.calibration_config())
+            if self.calibration is not None:
+                self.calibration_config().store()
             return False
 
         def pause():
@@ -119,12 +121,13 @@ class AI:
                 self.logger.error(f"Error in stream {e}")
                 traceback.print_exc()
 
-        self.cap.stop()
-        self.tracking.stop()
         if not self.headless:
             self.display.stop()
         if self.calibration is not None:
             self.calibration_display.stop()
+        self.cap.stop()
+        self.tracking.stop()
+
 
     def render_fps(self, frame: Frame, fps: int):
         frames_per_second = fps
@@ -155,13 +158,3 @@ class AI:
         width = int(dim[0] * scale_percent)
         height = int(dim[1] * scale_percent)
         return [width, height]
-
-#    @staticmethod
-#    def scale(src, scale_percent):
-#
-#        # calculate the percent of original dimensions
-#        width = int(src.shape[1] * scale_percent)
-#        height = int(src.shape[0] * scale_percent)
-#
-#        dim = (width, height)
-#        return [cv2.resize(src, dim), dim]

@@ -1,0 +1,5 @@
+bounds:
+- 0
+- 235
+invert_frame: true
+invert_mask: true

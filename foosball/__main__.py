@@ -32,13 +32,18 @@ ap.add_argument("-cs", "--calibrationSampleSize", type=int, default=50,
                 help="Sample size for calibration mode. If not given all detected image markers will be taken into "
                      "account")
 ap.add_argument("-cam", "--cameraId", type=int, default=None, help="Camera id to be used")
-ap.add_argument("-ba", "--ball", choices=['orange', 'yellow'], default='yellow', help="Pre-configured ball color bounds")
+ap.add_argument("-ba", "--ball", choices=['yaml', 'orange', 'yellow'], default='yaml',
+                help="Pre-configured ball color bounds. If 'yaml' is selected, a file called 'ball.yaml' (stored by "
+                     "hitting 's' in ball calibration mode) will be loaded as a preset. If no file present fallback to "
+                     "'yellow'")
 ap.add_argument("-v", "--verbose", action='store_true', help="Verbose")
 ap.add_argument("-o", "--off", action='store_true', help="Disable ai")
 ap.add_argument("-q", "--headless", action='store_true', help="Disable visualizations")
 ap.add_argument("-b", "--buffer", type=int, default=16, help="max track buffer size")
-ap.add_argument("-xp", "--xpad", type=int, default=50, help="Horizontal padding applied to ROI detected by aruco markers")
-ap.add_argument("-yp", "--ypad", type=int, default=20, help="Vertical padding applied to ROI detected by aruco markers")
+ap.add_argument("-xp", "--xpad", type=int, default=50,
+                help="Horizontal padding applied to ROI detected by aruco markers")
+ap.add_argument("-yp", "--ypad", type=int, default=20,
+                help="Vertical padding applied to ROI detected by aruco markers")
 ap.add_argument("-s", "--scale", type=float, default=0.4, help="Scale stream")
 ap.add_argument("-cap", "--capture", choices=['gear', 'imutils'], default='gear', help="capture backend")
 ap.add_argument("-d", "--display", choices=['cv', 'gear'], default='cv', help="display backend")

@@ -1,10 +1,12 @@
 import collections
+import os
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Union
 
 import cv2
 import numpy as np
+import yaml
 
 HSV = np.ndarray  # list[int, int, int]
 RGB = np.ndarray  # list[int, int, int]
@@ -29,13 +31,16 @@ class ScaleDirection(Enum):
     UP = 1
     DOWN = 2
 
+
 class Team(Enum):
     RED = 0
     BLUE = 1
 
+
 Point = [int, int]
 Rect = (Point, Point, Point, Point)
 BBox = [int, int, int, int]  # x y width height
+
 
 @dataclass
 class Score:
@@ -47,6 +52,8 @@ class Score:
             self.blue += 1
         elif team == Team.RED:
             self.red += 1
+
+
 @dataclass
 class FrameDimensions:
     original: [int, int]
@@ -97,11 +104,47 @@ class BallConfig:
         else:
             return [hsv2rgb(x) for x in self.bounds_hsv]
 
+    def store(self):
+        filename = f"ball.yaml"
+        print(f"Store config {filename}" + (" " * 50), end="\n\n")
+        with open(filename, "w") as f:
+            yaml.dump({
+                "bounds_hsv": [x.tolist() for x in self.bounds_hsv],
+                "invert_frame": self.invert_frame,
+                "invert_mask": self.invert_mask
+            }, f)
+
+    @staticmethod
+    def load(filename='ball.yaml'):
+        if os.path.isfile(filename):
+            with open(filename, 'r') as f:
+                c = yaml.safe_load(f)
+                return BallConfig(invert_frame=c['invert_frame'], invert_mask=c['invert_mask'], bounds_hsv=np.array(c['bounds_hsv']))
+        return None
+
+
 @dataclass
 class GoalConfig:
     bounds: [int, int]
     invert_frame: bool = True
     invert_mask: bool = True
+
+    def store(self):
+        filename = f"goal.yaml"
+        [lower, upper] = self.bounds
+        print(f"Store config {filename}" + (" " * 50), end="\n\n")
+        with open(filename, "w") as f:
+            yaml.dump({
+                "bounds": self.bounds,
+                "invert_frame": self.invert_frame,
+                "invert_mask": self.invert_mask
+            }, f)
+
+    @staticmethod
+    def load(filename='goal.yaml'):
+        with open(filename, 'r') as f:
+            c = yaml.safe_load(f)
+            return GoalConfig(**c)
 
 
 Track = collections.deque
@@ -116,6 +159,7 @@ class TrackResult:
     ball: Blob
     info: Info
 
+
 @dataclass
 class AnalyzeResult:
     frame: CPUFrame
@@ -124,6 +168,7 @@ class AnalyzeResult:
     ball_track: Track
     ball: Blob
     info: Info
+
 
 @dataclass
 class PreprocessResult:

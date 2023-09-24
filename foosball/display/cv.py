@@ -140,13 +140,6 @@ def reset_goal_config(config: GoalConfig):
     cv2.setTrackbarPos('upper', GOAL, upper)
 
 
-def store_config(calibration, bounds):
-    if calibration == GOAL:
-        store_goals_config(bounds)
-    elif calibration == BALL:
-        store_ball_config(bounds)
-
-
 def store_ball_config(config: BallConfig):
     filename = f"ball.yaml"
     [lower_hsv, upper_hsv] = config.bounds_hsv

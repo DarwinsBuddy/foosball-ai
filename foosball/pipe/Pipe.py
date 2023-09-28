@@ -44,15 +44,14 @@ class Pipe:
 
     def stop(self):
         self.logger.debug("Stopping pipe...")
-        self.queues[0].put_nowait(SENTINEL)
-        self.logger.debug("joining...")
-        for i in range(0, len(self.processes) - 1):
-            p = self.processes[i]
-            p.join()
-            self.logger.debug(f"joined   {p.name}")
+        for p in self.processes:
+            p.stop()
         # empty the last queue
-        clear(self.queues[-1])
-        # join the last process
-        self.processes[-1].join()
-        self.logger.debug(f"joined   {self.processes[-1].name}")
+        self.logger.debug("joining...")
+        for p in reversed(self.processes):
+            p.join()
+        self.logger.debug("draining queues...")
+        # draining all queues for good
+        for q in self.queues:
+            clear(q)
         self.logger.debug("Stopped  pipe")

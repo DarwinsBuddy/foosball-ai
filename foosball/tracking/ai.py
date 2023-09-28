@@ -127,6 +127,7 @@ class AI:
             self.calibration_display.stop()
         self.cap.stop()
         self.tracking.stop()
+        logging.debug("ai stopped")
 
 
     def render_fps(self, frame: Frame, fps: int):

@@ -53,7 +53,7 @@ class BaseProcess(multiprocessing.Process):
         pass
 
     def stop(self):
-        pass  # self.stop_event.set()
+        self.stop_event.set()
 
     def run(self):
         assert self.inq is not None
@@ -72,7 +72,7 @@ class BaseProcess(multiprocessing.Process):
                 self.logger.error(f"Error in {self._name} - {e}")
                 traceback.print_exc()
         self.logger.debug(f"Stopping {self._name}...")
-        self.outq.put_nowait(SENTINEL)
         clear(self.inq)
+        clear(self.outq)
         self.close()
         self.logger.debug(f"Stopped  {self._name}")

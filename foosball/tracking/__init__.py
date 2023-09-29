@@ -63,19 +63,20 @@ def generate_frame_mask(width, height) -> Mask:
 
 class Tracking:
 
-    def __init__(self, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, headless=False, **kwargs):
+    def __init__(self, stream, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, headless=False, **kwargs):
         super().__init__()
         self.calibration = kwargs.get('calibration')
         self.dims = dims
         width, height = dims.scaled
         mask = generate_frame_mask(width, height)
-        self.preprocessor = PreProcessor(goal_config, mask=mask, headless=headless, useGPU=kwargs.get('preprocess-gpu'),
+        self.preprocessor = PreProcessor(dims, goal_config, mask=mask, headless=headless, useGPU=kwargs.get('preprocess-gpu'),
                                          **kwargs)
         self.tracker = Tracker(ball_config, useGPU=kwargs.get('tracker-gpu'), **kwargs)
         self.analyzer = Analyzer(**kwargs)
         self.renderer = Renderer(dims, headless=headless, useGPU=kwargs.get('render-gpu'), **kwargs)
 
-        self.pipe = Pipe([self.preprocessor, self.tracker, self.analyzer, self.renderer])
+        self.stream = stream
+        self.pipe = Pipe(stream, [self.preprocessor, self.tracker, self.analyzer, self.renderer])
         self.frame_queue = self.pipe.input
 
     def start(self):
@@ -100,6 +101,3 @@ class Tracking:
             return self.tracker.config_input(config)
         elif self.calibration == "goal":
             return self.preprocessor.config_input(config)
-
-    def track(self, frame: Frame) -> None:
-        self.frame_queue.put_nowait(Msg(kwargs={'frame': frame}))

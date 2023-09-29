@@ -63,8 +63,11 @@ class BaseProcess(multiprocessing.Process):
             try:
                 msg = self.inq.get_nowait()
                 if msg is SENTINEL:
+                    self.outq.put_nowait(SENTINEL)
                     break
                 out = self.process(msg)
+                if out is None:
+                    self.logger.debug("out is None")
                 self.outq.put_nowait(out)
             except Empty:
                 pass
@@ -73,6 +76,5 @@ class BaseProcess(multiprocessing.Process):
                 traceback.print_exc()
         self.logger.debug(f"Stopping {self._name}...")
         clear(self.inq)
-        clear(self.outq)
         self.close()
         self.logger.debug(f"Stopped  {self._name}")

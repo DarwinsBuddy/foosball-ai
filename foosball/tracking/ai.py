@@ -6,19 +6,19 @@ from imutils.video import FPS
 
 from . import Tracking, get_ball_config, get_goal_config
 from .render import r_text, BLACK
-from ..models import FrameDimensions, ScaleDirection, Frame
-from ..utils import scale
 from ..display.cv import OpenCVDisplay, get_slider_config, add_config_input, reset_config, Key
+from ..models import FrameDimensions, Frame
 
 BLANKS = (' ' * 80)
 
+
 class AI:
 
-    def __init__(self, cap, dis, *args, **kwargs):
+    def __init__(self, stream, dis, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
         self.logger = logging.getLogger("AI")
-        self.cap = cap
+        self.stream = stream
         self.headless = kwargs.get('headless')
         self.display = dis if not self.headless else None
         self.paused = False
@@ -27,16 +27,17 @@ class AI:
         self._stopped = False
         self.ball_config = get_ball_config(self.kwargs.get('ball'))
         self.goals_config = get_goal_config()
+
         if self.calibration is not None:
             self.calibration_config = lambda: self.ball_config if self.calibration == 'ball' else self.goals_config
         self.detection_frame = None
 
-        original = self.cap.dim()
+        original = self.stream.dim()
         self.scale = self.kwargs.get('scale')
         scaled = self.scale_dim(original, self.scale)
         self.dims = FrameDimensions(original, scaled, self.scale)
 
-        self.tracking = Tracking(self.dims, self.ball_config, self.goals_config, **self.kwargs)
+        self.tracking = Tracking(self.stream, self.dims, self.ball_config, self.goals_config, **self.kwargs)
 
         if not self.headless and self.calibration is not None:
             self.calibration_display = OpenCVDisplay(self.calibration, pos='br')
@@ -81,42 +82,31 @@ class AI:
         }
 
         self.fps.start()
-        f = None
         while not self._stopped:
             try:
                 self.fps.update()
-                process_frame = not self.paused or self.step
-                if process_frame:
-                    f = self.cap.next()
-                    if f is not None:
-                        f = scale(f, self.dims, ScaleDirection.DOWN)
-                if f is not None:
-                    if process_frame:
-                        self.step = False
-                        self.adjust_calibration()
-                        self.tracking.track(f)
-                        try:
-                            msg = self.tracking.output.get(block=False)
-                            f = msg.kwargs['result']
-                            self.fps.stop()
-                            fps = int(self.fps.fps())
-                            if not self.headless:
-                                self.render_fps(f, fps)
-                                self.display.show(f)
-                                if self.calibration is not None:
-                                    self.render_calibration()
-                                if self.display.render(callbacks=callbacks):
-                                    break
-                            else:
-                                print(f"{f} - FPS: {fps} {BLANKS}", end="\r")
-                        except Empty:
-                            # logger.debug("No new frame")
-                            pass
-                    elif self.display.render(callbacks=callbacks):
+
+                try:
+                    self.adjust_calibration()
+                    msg = self.tracking.output.get(block=False)
+                    if msg is None:
+                        print("msg is None")
                         break
-                else:
-                    self.logger.debug("End of stream. Shutting down...")
-                    break
+                    f = msg.kwargs['result']
+                    self.fps.stop()
+                    fps = int(self.fps.fps())
+                    if not self.headless:
+                        self.render_fps(f, fps)
+                        self.display.show(f)
+                        if self.calibration is not None:
+                            self.render_calibration()
+                        if self.display.render(callbacks=callbacks):
+                            break
+                    else:
+                        print(f"{f} - FPS: {fps} {BLANKS}", end="\r")
+                except Empty:
+                    # logger.debug("No new frame")
+                    pass
             except Exception as e:
                 self.logger.error(f"Error in stream {e}")
                 traceback.print_exc()
@@ -125,7 +115,6 @@ class AI:
             self.display.stop()
         if self.calibration is not None:
             self.calibration_display.stop()
-        self.cap.stop()
         self.tracking.stop()
         logging.debug("ai stopped")
 

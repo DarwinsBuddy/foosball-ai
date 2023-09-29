@@ -1,4 +1,3 @@
-import logging
 import traceback
 from enum import Enum
 from multiprocessing import Queue
@@ -7,13 +6,12 @@ from queue import Empty
 import cv2
 import numpy as np
 
-from ..pipe.BaseProcess import BaseProcess, Msg
-from ..pipe.Pipe import clear
-from ..utils import ensure_cpu, generate_processor_switches, relative_change
 from .colordetection import detect_goals
 from ..arUcos import calibration, Aruco
-from ..models import Frame, PreprocessResult, Point, Rect, GoalConfig, Blob, Goals
-
+from ..models import Frame, PreprocessResult, Point, Rect, GoalConfig, Blob, Goals, FrameDimensions, ScaleDirection
+from ..pipe.BaseProcess import BaseProcess, Msg
+from ..pipe.Pipe import clear
+from ..utils import ensure_cpu, generate_processor_switches, relative_change, scale
 
 TEXT_SCALE = 0.8
 TEXT_COLOR = (0, 255, 0)
@@ -39,11 +37,12 @@ def pad_rect(rectangle: Rect, xpad: int, ypad: int) -> Rect:
 
 
 class PreProcessor(BaseProcess):
-    def __init__(self, goal_config: GoalConfig, headless=True, mask=None, used_markers=None,
+    def __init__(self, dims: FrameDimensions, goal_config: GoalConfig, headless=True, mask=None, used_markers=None,
                  redetect_markers_frames: int = 60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
                  aruco_params=cv2.aruco.DetectorParameters(), xpad: int = 50, ypad: int = 20,
                  goal_change_threshold: float = 0.10, useGPU: bool = False, **kwargs):
         super().__init__(name="Preprocess")
+        self.dims = dims
         self.goal_change_threshold = goal_change_threshold
         self.redetect_markers_frame_threshold = redetect_markers_frames
         if used_markers is None:
@@ -91,6 +90,7 @@ class PreProcessor(BaseProcess):
     def process(self, msg: Msg) -> Msg:
         frame = msg.kwargs['frame']
         frame = self.proc(frame)
+        frame = scale(frame, self.dims, ScaleDirection.DOWN)
         preprocessed = frame
         info = []
         try:

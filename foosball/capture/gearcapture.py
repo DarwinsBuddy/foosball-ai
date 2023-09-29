@@ -38,9 +38,9 @@ class GearCapture:
 
     def stream(self):
         if self.source == 'file':
-            return self.cap.stream.stream
+            return self.cap.cap.cap
         else:
-            return self.cap.stream.stream
+            return self.cap.cap.cap
 
     def dim(self):
         width = int(self.stream().get(cv2.CAP_PROP_FRAME_WIDTH))

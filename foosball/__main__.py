@@ -85,9 +85,9 @@ if __name__ == '__main__':
             from .capture.gearcapture import GearCapture
             cap = GearCapture(source, framerate=32, resolution=(1280, 720))
         elif kwargs.get('capture') == 'imutils':
-            from .capture.filecapture import FileCapture
+            from .capture.filecapture import FileVideoStream
 
-            cap = FileCapture(source)
+            cap = FileVideoStream(source)
         else:
             usage_and_exit()
         print(kwargs)

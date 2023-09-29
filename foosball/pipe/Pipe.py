@@ -16,11 +16,12 @@ def clear(q: Queue):
 
 
 class Pipe:
-    def __init__(self, processes: list[BaseProcess]):
+    def __init__(self, stream, processes: list[BaseProcess], maxsize=0):
         assert len(processes) > 0
         self.logger = logging.getLogger("Pipe")
         self.processes: list[BaseProcess] = processes
-        self.queues = [Queue() for i in range(0, len(processes) + 1)]
+        self.stream = stream
+        self.queues = [self.stream.output] + [Queue(maxsize=maxsize) for i in range(0, len(processes))]
         self.build()
 
     def build(self):
@@ -32,6 +33,7 @@ class Pipe:
         self.logger.debug("Starting pipe...")
         for p in self.processes:
             p.start()
+        self.stream.start()
         self.logger.debug("Started  pipe")
 
     @property
@@ -44,14 +46,17 @@ class Pipe:
 
     def stop(self):
         self.logger.debug("Stopping pipe...")
+        self.stream.stop()
         for p in self.processes:
             p.stop()
         # empty the last queue
         self.logger.debug("joining...")
-        for p in reversed(self.processes):
-            p.join()
+        self.logger.debug(f"Queue sizes: {' '.join([f'{q.qsize()}' for q in self.queues])}")
         self.logger.debug("draining queues...")
         # draining all queues for good
         for q in self.queues:
             clear(q)
+        for p in reversed(self.processes):
+            p.join()
+        self.logger.debug(f"Queue sizes: {' '.join([f'{q.qsize()}' for q in self.queues])}")
         self.logger.debug("Stopped  pipe")

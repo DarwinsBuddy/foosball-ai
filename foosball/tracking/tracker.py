@@ -99,7 +99,8 @@ class Tracker(BaseProcess):
                         )
                 if self.ball_calibration:
                     self.calibration_out.put_nowait(self.iproc(ball_detection_result.frame))
-                ball_track = self.update_ball_track(ball)
+                    # copy deque, since we otherwise run into odd tracks displayed
+                ball_track = self.update_ball_track(ball).copy()
             info = preprocess_result.info + self.get_info(ball_track)
         except Exception as e:
             logger.error(f"Error in track {e}")

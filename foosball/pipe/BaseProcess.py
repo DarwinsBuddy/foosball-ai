@@ -3,7 +3,7 @@ import dataclasses
 import logging
 import multiprocessing
 import traceback
-from queue import Empty
+from queue import Empty, Full
 
 from foosball.pipe.Pipe import clear, SENTINEL
 
@@ -55,6 +55,25 @@ class BaseProcess(multiprocessing.Process):
     def stop(self):
         self.stop_event.set()
 
+    def send(self, msg: Msg):
+        while True:
+            try:
+                self.outq.put(msg, block=True, timeout=0.5)
+                break
+            except Full:
+                print("Queue is full")
+                if self.stop_event.is_set():
+                    break
+
+    def receive(self) -> Msg:
+        while True:
+            try:
+                return self.inq.get(block=True, timeout=0.5)
+            except Empty:
+                print("Queue is empty")
+                if self.stop_event.is_set():
+                    break
+
     def run(self):
         assert self.inq is not None
         assert self.outq is not None
@@ -63,12 +82,12 @@ class BaseProcess(multiprocessing.Process):
             try:
                 msg = self.inq.get_nowait()
                 if msg is SENTINEL:
-                    self.outq.put_nowait(SENTINEL)
+                    self.send(SENTINEL)
                     break
                 out = self.process(msg)
                 if out is None:
                     self.logger.debug("out is None")
-                self.outq.put_nowait(out)
+                self.send(out)
             except Empty:
                 pass
             except Exception as e:

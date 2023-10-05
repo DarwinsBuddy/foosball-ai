@@ -18,11 +18,15 @@ class Analyzer(BaseProcess):
 
     def goal_shot(self, goals: Goals, track: Track) -> Optional[Team]:
         # current track is empty but last track had one single point left
-        if len([x for x in track if x is not None]) == 0 and len([x for x in self.last_track if x is not None]) == 1:
-            if contains(goals.left.bbox, self.last_track[-1]):
-                return Team.BLUE
-            elif contains(goals.right.bbox, self.last_track[-1]):
-                return Team.RED
+        try:
+            if len([x for x in track if x is not None]) == 0 and len([x for x in self.last_track if x is not None]) == 1:
+                if contains(goals.left.bbox, self.last_track[-1]):
+                    return Team.BLUE
+                elif contains(goals.right.bbox, self.last_track[-1]):
+                    return Team.RED
+        except Exception as e:
+            self.logger.error(f"Error {e}")
+            self.logger.error(f"self.last_track: [{' '.join([f'{x}' for x in self.last_track])}]")
         return None
 
     def process(self, msg: Msg) -> Msg:
@@ -37,8 +41,8 @@ class Analyzer(BaseProcess):
             self.score.inc(team)
             if team is not None:
                 self.logger.info(f"GOAL Team:{team} - {self.score.red} : {self.score.blue}")
-            self.last_track = track
         except Exception as e:
             self.logger.error("Error in analyzer ", e)
             traceback.print_exc()
+        self.last_track = track
         return Msg(kwargs={"result": AnalyzeResult(score=self.score, ball=ball, goals=goals, frame=frame, info=info, ball_track=track)})

@@ -10,13 +10,13 @@ SENTINEL = None
 def clear(q: Queue):
     try:
         while True:
-            q.get(block=True, timeout=0.01)
+            q.get(block=True, timeout=1)
     except Empty:
         pass
 
 
 class Pipe:
-    def __init__(self, stream, processes: list[BaseProcess], maxsize=0):
+    def __init__(self, stream, processes: list[BaseProcess], maxsize=128):
         assert len(processes) > 0
         self.logger = logging.getLogger("Pipe")
         self.processes: list[BaseProcess] = processes
@@ -50,12 +50,13 @@ class Pipe:
         for p in self.processes:
             p.stop()
         # empty the last queue
-        self.logger.debug("joining...")
+
         self.logger.debug(f"Queue sizes: {' '.join([f'{q.qsize()}' for q in self.queues])}")
         self.logger.debug("draining queues...")
         # draining all queues for good
         for q in self.queues:
             clear(q)
+        self.logger.debug("joining...")
         for p in reversed(self.processes):
             p.join()
         self.logger.debug(f"Queue sizes: {' '.join([f'{q.qsize()}' for q in self.queues])}")

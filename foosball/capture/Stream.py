@@ -60,7 +60,7 @@ class Stream(Thread):
                 self.Q.put(msg, True, 0.5)
                 break
             except Full:
-                print("Queue is full")
+                # print("Queue is full")
                 if self.stopped:
                     break
 

@@ -6,6 +6,7 @@ from imutils.video import FPS
 
 from . import Tracking, get_ball_config, get_goal_config
 from .render import r_text, BLACK
+from ..capture.Stream import Stream
 from ..display.cv import OpenCVDisplay, get_slider_config, add_config_input, reset_config, Key
 from ..models import FrameDimensions, Frame
 
@@ -14,7 +15,7 @@ BLANKS = (' ' * 80)
 
 class AI:
 
-    def __init__(self, stream, dis, *args, **kwargs):
+    def __init__(self, stream: Stream, dis, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
         self.logger = logging.getLogger("AI")
@@ -22,7 +23,6 @@ class AI:
         self.headless = kwargs.get('headless')
         self.display = dis if not self.headless else None
         self.paused = False
-        self.step = False
         self.calibration = self.kwargs.get('calibration')
         self._stopped = False
         self.ball_config = get_ball_config(self.kwargs.get('ball'))
@@ -61,14 +61,19 @@ class AI:
             return False
 
         def pause():
+            if self.paused:
+                self.tracking.resume()
+            else:
+                self.tracking.pause()
+
             self.paused = not self.paused
             self.logger.info("PAUSE" if self.paused else "RESUME")
             return False
 
         def step_frame():
-            if not self.step and self.paused:
+            if self.paused:
                 self.logger.info("STEP")
-                self.step = True
+                self.tracking.step()
             return False
 
         self.tracking.start()
@@ -84,14 +89,13 @@ class AI:
         self.fps.start()
         while not self._stopped:
             try:
-                self.fps.update()
-
                 try:
                     self.adjust_calibration()
                     msg = self.tracking.output.get(block=False)
                     if msg is None:
                         self.logger.debug("received SENTINEL")
                         break
+                    self.fps.update()
                     f = msg.kwargs['result']
                     self.fps.stop()
                     fps = int(self.fps.fps())
@@ -107,6 +111,8 @@ class AI:
                 except Empty:
                     # logger.debug("No new frame")
                     pass
+                if self.display.render(callbacks=callbacks):
+                    break
             except Exception as e:
                 self.logger.error(f"Error in stream {e}")
                 traceback.print_exc()

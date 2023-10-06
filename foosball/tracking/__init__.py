@@ -85,6 +85,15 @@ class Tracking:
     def stop(self):
         self.pipe.stop()
 
+    def pause(self):
+        self.pipe.pause()
+
+    def resume(self):
+        self.pipe.resume()
+
+    def step(self):
+        self.pipe.step()
+
     @property
     def output(self) -> Queue:
         return self.pipe.output

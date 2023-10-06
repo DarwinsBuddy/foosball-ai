@@ -27,7 +27,10 @@ class BaseProcess(multiprocessing.Process):
         self.args = args
         self.logger = logging.getLogger(kwargs.get('name') or __name__)
         self.kwargs = kwargs
-        self.stop_event: multiprocessing.Event = multiprocessing.Event()
+        self.stopped: multiprocessing.Event = multiprocessing.Event()
+        self.next_step: multiprocessing.Event = multiprocessing.Event()
+        self.playing: multiprocessing.Event = multiprocessing.Event()
+        self.playing.set()
         self.send_receive_timeout = send_receive_timeout
 
     def set_input(self, inq):
@@ -52,8 +55,19 @@ class BaseProcess(multiprocessing.Process):
     def close(self):
         pass
 
+    def pause(self):
+        if self.playing.is_set():
+            self.playing.clear()
+
+    def resume(self):
+        if not self.playing.is_set():
+            self.playing.set()
+
+    def step(self):
+        self.next_step.set()
+
     def stop(self):
-        self.stop_event.set()
+        self.stopped.set()
 
     def send(self, msg: Msg):
         while True:
@@ -61,8 +75,8 @@ class BaseProcess(multiprocessing.Process):
                 self.outq.put(msg, block=True, timeout=self.send_receive_timeout)
                 break
             except Full:
-                print("Queue is full")
-                if self.stop_event.is_set():
+                # print("Queue is full")
+                if self.stopped.is_set():
                     break
 
     def receive(self) -> Msg:
@@ -70,25 +84,29 @@ class BaseProcess(multiprocessing.Process):
             try:
                 return self.inq.get(block=True, timeout=self.send_receive_timeout)
             except Empty:
-                print("Queue is empty")
-                if self.stop_event.is_set():
+                # print("Queue is empty")
+                if self.stopped.is_set():
                     break
 
     def run(self):
         assert self.inq is not None
         assert self.outq is not None
         self.logger.debug(f"Starting {self._name}")
-        while not self.stop_event.is_set():
+        while not self.stopped.is_set():
             try:
-                msg = self.inq.get_nowait()
-                if msg is SENTINEL:
-                    self.logger.debug("received SENTINEL")
-                    self.send(SENTINEL)
-                    break
-                out = self.process(msg)
-                if out is None:
-                    self.logger.debug("sending SENTINEL")
-                self.send(out)
+                if self.playing.is_set() or self.next_step.is_set():
+                    self.next_step.clear()
+                    msg = self.inq.get_nowait()
+                    if msg is SENTINEL:
+                        self.logger.debug("received SENTINEL")
+                        self.send(SENTINEL)
+                        break
+                    out = self.process(msg)
+                    if out is None:
+                        self.logger.debug("sending SENTINEL")
+                    self.send(out)
+                else:
+                    self.playing.wait(timeout=0.5)
             except Empty:
                 pass
             except Exception as e:

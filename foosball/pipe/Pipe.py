@@ -36,6 +36,15 @@ class Pipe:
         self.stream.start()
         self.logger.debug("Started  pipe")
 
+    def pause(self):
+        self.processes[0].pause()
+
+    def resume(self):
+        self.processes[0].resume()
+
+    def step(self):
+        self.processes[0].step()
+
     @property
     def output(self):
         return self.queues[-1]

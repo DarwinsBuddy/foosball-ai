@@ -1,8 +1,10 @@
+import multiprocessing
 from abc import abstractmethod
 from multiprocessing import Queue
 from queue import Full
 from threading import Thread
 
+from foosball.models import Frame
 from foosball.pipe.BaseProcess import Msg
 
 
@@ -22,14 +24,14 @@ class Stream(Thread):
         self.Q = Queue(maxsize=maxsize)
 
     @abstractmethod
-    def is_eos(self):
+    def is_eos(self) -> bool:
         return False
 
     @abstractmethod
-    def next_frame(self):
+    def next_frame(self) -> Frame:
         pass
 
-    def read_frame(self):
+    def read_frame(self) -> (bool, Frame):
         # grab the current frame
         flag, frame = self.next_frame()
 
@@ -47,10 +49,10 @@ class Stream(Thread):
         return flag, frame
 
     @property
-    def output(self):
+    def output(self) -> multiprocessing.Queue:
         return self.Q
 
-    def send_frame(self, frame):
+    def send_frame(self, frame) -> None:
         msg = Msg(kwargs={'frame': frame}) if frame is not None else None
         while True:
             try:
@@ -62,7 +64,7 @@ class Stream(Thread):
                 if self.stopped:
                     break
 
-    def run(self):
+    def run(self) -> None:
         while not self.stopped:
             # read the next frame from the file
             grabbed, frame = self.read_frame()
@@ -77,7 +79,7 @@ class Stream(Thread):
         self.close_capture()
 
     @abstractmethod
-    def close_capture(self):
+    def close_capture(self) -> None:
         pass
 
     @abstractmethod
@@ -86,4 +88,3 @@ class Stream(Thread):
 
     def stop(self):
         self.stopped = True
-        return self

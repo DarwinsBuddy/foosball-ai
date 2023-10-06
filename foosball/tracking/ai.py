@@ -90,7 +90,7 @@ class AI:
                     self.adjust_calibration()
                     msg = self.tracking.output.get(block=False)
                     if msg is None:
-                        print("msg is None")
+                        self.logger.debug("received SENTINEL")
                         break
                     f = msg.kwargs['result']
                     self.fps.stop()

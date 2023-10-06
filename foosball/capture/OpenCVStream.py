@@ -4,11 +4,11 @@ import numpy as np
 from foosball.capture.Stream import Stream
 
 
-class FileVideoStream(Stream):
+class OpenCVStream(Stream):
 
-    def __init__(self, path, *args, **kwargs):
+    def __init__(self, source: str | int, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.cap = cv2.VideoCapture(path)
+        self.cap = cv2.VideoCapture(source)
         self.total_frames = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
 
     def next_frame(self) -> (bool, np.array):

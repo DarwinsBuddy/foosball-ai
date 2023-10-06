@@ -21,14 +21,14 @@ class Msg:
         self.kwargs = kwargs
         self.args = args
 
-
 class BaseProcess(multiprocessing.Process):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, send_receive_timeout=0.5, *args, **kwargs):
         super().__init__(daemon=True, *args, **kwargs)
         self.args = args
         self.logger = logging.getLogger(kwargs.get('name') or __name__)
         self.kwargs = kwargs
         self.stop_event: multiprocessing.Event = multiprocessing.Event()
+        self.send_receive_timeout = send_receive_timeout
 
     def set_input(self, inq):
         self.inq = inq
@@ -58,7 +58,7 @@ class BaseProcess(multiprocessing.Process):
     def send(self, msg: Msg):
         while True:
             try:
-                self.outq.put(msg, block=True, timeout=0.5)
+                self.outq.put(msg, block=True, timeout=self.send_receive_timeout)
                 break
             except Full:
                 print("Queue is full")
@@ -68,7 +68,7 @@ class BaseProcess(multiprocessing.Process):
     def receive(self) -> Msg:
         while True:
             try:
-                return self.inq.get(block=True, timeout=0.5)
+                return self.inq.get(block=True, timeout=self.send_receive_timeout)
             except Empty:
                 print("Queue is empty")
                 if self.stop_event.is_set():
@@ -82,11 +82,12 @@ class BaseProcess(multiprocessing.Process):
             try:
                 msg = self.inq.get_nowait()
                 if msg is SENTINEL:
+                    self.logger.debug("received SENTINEL")
                     self.send(SENTINEL)
                     break
                 out = self.process(msg)
                 if out is None:
-                    self.logger.debug("out is None")
+                    self.logger.debug("sending SENTINEL")
                 self.send(out)
             except Empty:
                 pass

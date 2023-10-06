@@ -45,7 +45,7 @@ ap.add_argument("-xp", "--xpad", type=int, default=50,
 ap.add_argument("-yp", "--ypad", type=int, default=20,
                 help="Vertical padding applied to ROI detected by aruco markers")
 ap.add_argument("-s", "--scale", type=float, default=0.4, help="Scale stream")
-ap.add_argument("-cap", "--capture", choices=['gear', 'imutils'], default='gear', help="capture backend")
+ap.add_argument("-cap", "--capture", choices=['cv', 'gear'], default='gear', help="capture backend")
 ap.add_argument("-d", "--display", choices=['cv', 'gear'], default='cv', help="display backend")
 ap.add_argument("-g", "--gpu", choices=['preprocess', 'tracker', 'render'], nargs='+', default=["render"], help="use GPU")
 kwargs = vars(ap.parse_args())
@@ -82,12 +82,11 @@ if __name__ == '__main__':
 
         source = kwargs.get('file') or kwargs.get('cameraId')
         if kwargs.get('capture') == 'gear':
-            from .capture.gearcapture import GearCapture
-            cap = GearCapture(source, framerate=32, resolution=(1280, 720))
-        elif kwargs.get('capture') == 'imutils':
-            from .capture.filecapture import FileVideoStream
-
-            cap = FileVideoStream(source)
+            from .capture.GearStream import GearStream
+            cap = GearStream(source, framerate=32, resolution=(1280, 720))
+        elif kwargs.get('capture') == 'cv':
+            from .capture.OpenCVStream import OpenCVStream
+            cap = OpenCVStream(source)
         else:
             usage_and_exit()
         print(kwargs)

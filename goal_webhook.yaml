@@ -1,0 +1,5 @@
+method: 'POST'
+url:    'http://localhost:8080/v1/api/goal'
+json:
+  "team": None
+  "tableId": 'f9482fd4-0da1-4b86-ad5c-571a4724273e'

@@ -33,8 +33,8 @@ class ScaleDirection(Enum):
 
 
 class Team(Enum):
-    RED = 0
-    BLUE = 1
+    RED = 'RED'
+    BLUE = 'BLUE'
 
 
 Point = [int, int]

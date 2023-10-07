@@ -48,6 +48,8 @@ ap.add_argument("-s", "--scale", type=float, default=0.4, help="Scale stream")
 ap.add_argument("-cap", "--capture", choices=['cv', 'gear'], default='gear', help="capture backend")
 ap.add_argument("-d", "--display", choices=['cv', 'gear'], default='cv', help="display backend")
 ap.add_argument("-g", "--gpu", choices=['preprocess', 'tracker', 'render'], nargs='+', default=["render"], help="use GPU")
+ap.add_argument("-A", "--audio", action='store_true', help="Enable audio")
+ap.add_argument("-W", "--webhook", action='store_true', help="Enable webhook")
 kwargs = vars(ap.parse_args())
 
 

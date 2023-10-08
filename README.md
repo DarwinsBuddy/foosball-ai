@@ -1,14 +1,35 @@
-Outdated
-<img src="./diagram-export-10_9_2022%2C%205_07_28%20PM.png" alt="Architecture sketch" width="250"/>
-
-
 ## foosball-ai  
 [![codecov](https://codecov.io/gh/DarwinsBuddy/foosball-ai/branch/main/graph/badge.svg?token=ACYNOG1WFW)](https://codecov.io/gh/DarwinsBuddy/foosball-ai)
 [![Tests](https://github.com/DarwinsBuddy/foosball-ai/actions/workflows/test.yml/badge.svg)](https://github.com/DarwinsBuddy/foosball-ai/actions/workflows/test.yml)
 
-## Prerequisites  
+This software is designed to take a camera feed or a video file as an input of a match played
+on a foosball table (🇦🇹 Wuzzler), track the ball and count goals.
+
+## Features
+
+* Support for different streaming backends ([imutils/opencv](https://docs.opencv.org/4.x/d8/dfe/classcv_1_1VideoCapture.html), [VidGear](https://abhitronix.github.io/vidgear/latest/)) for capturing
+* Preprocessing
+  * arUco marker detection for roi estimation and cropping to improve performance
+  * goal detection build on top of arUco detection (done every other second to compensate table movement)
+* Ball tracking
+  * frame-by-frame analysis of rgb/bgr stream
+  * ball detection by color masking (can be calibrated for different ball colors)
+  * ball track (adjustable length) to analyze later on
+* Analyze
+  * [X] detect goals on either side
+  * [ ] TBD: detect middle goals (they won't count in 🇦🇹 tavern rules)
+  * [ ] TBD: estimate ball speed
+* Hooks
+  * `playsound` providing support for playing a sound on 📢 goal 🎉
+  * webhook support for triggering something different (or counting goals on a [separate](https://github.com/5GS/foosball) [system](https://github.com/5GS/foosball-ui))
+* Rendering
+  * optional, since `headless` mode is also supported
+  * show detected goals, basic stats, ball track, current score
+
+## Prerequisites
 * python3  
 * pip
+* opencv
   
 ## Install  
   

@@ -111,7 +111,7 @@ class AI:
                 except Empty:
                     # logger.debug("No new frame")
                     pass
-                if self.display.render(callbacks=callbacks):
+                if not self.headless and self.display.render(callbacks=callbacks):
                     break
             except Exception as e:
                 self.logger.error(f"Error in stream {e}")

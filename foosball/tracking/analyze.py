@@ -35,6 +35,12 @@ class Analyzer(BaseProcess):
             self.logger.error(f"self.last_track: [{' '.join([f'{x}' for x in self.last_track])}]")
         return None
 
+    def call_hooks(self, team: Team) -> None:
+        if self.audio:
+            hooks.play_random_sound('goal')
+        if self.webhook:
+            hooks.webhook(generate_goal_webhook(team))
+
     def process(self, msg: Msg) -> Msg:
         track_result = msg.kwargs['result']
         goals = track_result.goals
@@ -47,10 +53,7 @@ class Analyzer(BaseProcess):
             self.score.inc(team)
             if team is not None:
                 self.logger.info(f"GOAL Team:{team} - {self.score.red} : {self.score.blue}")
-                if self.audio:
-                    hooks.play_random_sound('goal')
-                if self.webhook:
-                    hooks.webhook(generate_goal_webhook(team))
+                self.call_hooks(team)
         except Exception as e:
             self.logger.error("Error in analyzer ", e)
             traceback.print_exc()

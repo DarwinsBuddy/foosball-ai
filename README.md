@@ -25,6 +25,7 @@ on a foosball table (🇦🇹 Wuzzler), track the ball and count goals.
 * Rendering
   * optional, since `headless` mode is also supported
   * show detected goals, basic stats, ball track, current score
+  * [ ] add VidGear streaming support to live stream
 
 ## Prerequisites
 * python3  

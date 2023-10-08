@@ -97,3 +97,8 @@ the generated aruco board to the camera by
 > ```#!/bin/sh  
 > python3 -m foosball -c cam -cs 50
 > ```
+
+## License
+
+![CC-BY-NC-SA](https://github.com/DarwinsBuddy/foosball-ai/blob/main/misc/cc-by-nc-sa.svg)
+This software is licensed under CC-BY-NC-SA

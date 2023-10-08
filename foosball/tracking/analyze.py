@@ -32,7 +32,6 @@ class Analyzer(BaseProcess):
                     return Team.RED
         except Exception as e:
             self.logger.error(f"Error {e}")
-            self.logger.error(f"self.last_track: [{' '.join([f'{x}' for x in self.last_track])}]")
         return None
 
     def call_hooks(self, team: Team) -> None:

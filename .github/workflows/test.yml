@@ -11,6 +11,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: Cache OpenCV
+        uses: UrielCh/opencv-cache-action@V1
+        with:
+          branch: 4.x
+          BUILD_LIST: core
+          NO_CONTRIB: ''
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:

@@ -8,11 +8,11 @@ from typing import Mapping, Callable
 
 import urllib3
 import yaml
-from playsound import playsound
 
 from foosball.models import Team
 
 logger = logging.getLogger(__name__)
+
 
 @dataclasses.dataclass
 class Webhook:
@@ -66,6 +66,7 @@ def play_random_sound(folder: str, prefix: str = './assets/audio'):
 
 
 def play_sound(sound_file: str):
+    from playsound import playsound
     if os.path.isfile(sound_file):
         playsound(sound_file, block=False)
     else:

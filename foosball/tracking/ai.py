@@ -3,6 +3,7 @@ import traceback
 from queue import Empty
 
 from imutils.video import FPS
+from vidgear.gears import WriteGear
 
 from . import Tracking, get_ball_config, get_goal_config
 from .render import r_text, BLACK
@@ -27,6 +28,8 @@ class AI:
         self._stopped = False
         self.ball_config = get_ball_config(self.kwargs.get('ball'))
         self.goals_config = get_goal_config()
+
+        self.output = None if kwargs.get('output') is None else WriteGear(kwargs.get('output'), logging=True)
 
         if self.calibration is not None:
             self.calibration_config = lambda: self.ball_config if self.calibration == 'ball' else self.goals_config
@@ -102,6 +105,8 @@ class AI:
                     if not self.headless:
                         self.render_fps(f, fps)
                         self.display.show(f)
+                        if self.output is not None:
+                            self.output.write(f)
                         if self.calibration is not None:
                             self.render_calibration()
                         if self.display.render(callbacks=callbacks):

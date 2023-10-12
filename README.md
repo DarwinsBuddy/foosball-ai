@@ -1,6 +1,8 @@
-## foosball-ai  
+## foosball-ai
 [![codecov](https://codecov.io/gh/DarwinsBuddy/foosball-ai/branch/main/graph/badge.svg?token=ACYNOG1WFW)](https://codecov.io/gh/DarwinsBuddy/foosball-ai)
 [![Tests](https://github.com/DarwinsBuddy/foosball-ai/actions/workflows/test.yml/badge.svg)](https://github.com/DarwinsBuddy/foosball-ai/actions/workflows/test.yml)
+
+<img alt="example gif of a tracked goal" src="https://github.com/DarwinsBuddy/foosball-ai/blob/main/misc/example.gif" width="25%" height="25%"/>
 
 This software is designed to take a camera feed or a video file as an input of a match played
 on a foosball table (🇦🇹 Wuzzler), track the ball and count goals.

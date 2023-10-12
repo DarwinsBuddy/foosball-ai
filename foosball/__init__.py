@@ -45,6 +45,7 @@ def get_argparse():
                          "If no file present fallback to 'yellow'")
     ap.add_argument("-v", "--verbose", action='store_true', help="Verbose")
     ap.add_argument("-o", "--off", action='store_true', help="Disable ai")
+    ap.add_argument("-out", "--output", default=None, help="path to store (optional) a rendered video")
     ap.add_argument("-q", "--headless", action='store_true', help="Disable visualizations")
     ap.add_argument("-b", "--buffer", type=int, default=16, help="max track buffer size")
     ap.add_argument("-xp", "--xpad", type=int, default=50,

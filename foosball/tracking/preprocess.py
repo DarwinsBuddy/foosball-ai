@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 
 from const import CalibrationMode, OFF
-from ..arUcos import calibration
+from ..arUcos import calibration, Calibration
 from ..arUcos.models import Aruco
 from ..detectors.color import GoalDetector, GoalColorConfig
 from ..models import Frame, PreprocessResult, Point, Rect, Blob, Goals, FrameDimensions, ScaleDirection, \
@@ -62,6 +62,7 @@ class PreProcessor(BaseProcess):
         self.frames_since_last_marker_detection = 0
         self.goals = None
         self.calibrationMode = calibrationMode
+        self.camera_calibration = Calibration().load()
         self.verbose = verbose
         self.goals_calibration = self.calibrationMode == CalibrationMode.GOAL
         self.calibration_out = Queue() if self.goals_calibration else None
@@ -81,7 +82,7 @@ class PreProcessor(BaseProcess):
 
     def detect_markers(self, frame: Frame) -> list[Aruco]:
         img_gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        return calibration.detect_markers(img_gray, self.detector)
+        return calibration.detect_markers(img_gray, self.detector, self.camera_calibration)
 
     def mask_frame(self, frame: Frame) -> Frame:
         """
@@ -148,41 +149,16 @@ class PreProcessor(BaseProcess):
         except Exception as e:
             self.logger.error(f"Error in preprocess {e}")
             traceback.print_exc()
-        return Msg(kwargs={"time": timestamp, "result": PreprocessResult(self.iproc(frame), self.iproc(preprocessed), self.homography_matrix, self.goals, info)})
-
-    @staticmethod
-    def corners2pt(corners) -> [int, int]:
-        moments = cv2.moments(corners)
-        c_x = int(moments["m10"] / moments["m00"])
-        c_y = int(moments["m01"] / moments["m00"])
-        return [c_x, c_y]
-
-    @staticmethod
-    def order_points(pts: np.ndarray) -> np.ndarray:
-        # initialize a list of coordinates that will be ordered
-        # such that the first entry in the list is the top-left,
-        # the second entry is the top-right, the third is the
-        # bottom-right, and the fourth is the bottom-left
-        rect = np.zeros((4, 2), dtype="float32")
-        # the top-left point will have the smallest sum, whereas
-        # the bottom-right point will have the largest sum
-        s = pts.sum(axis=1)
-        rect[0] = pts[np.argmin(s)]
-        rect[2] = pts[np.argmax(s)]
-        # now, compute the difference between the points, the
-        # top-right point will have the smallest difference,
-        # whereas the bottom-left will have the largest difference
-        diff = np.diff(pts, axis=1)
-        rect[1] = pts[np.argmin(diff)]
-        rect[3] = pts[np.argmax(diff)]
-        # return the ordered coordinates
-        return rect
+        return Msg(kwargs={
+            "time": timestamp,
+            "result": PreprocessResult(self.iproc(frame), self.iproc(preprocessed), self.markers, self.homography_matrix, self.goals, info)
+        })
 
     def four_point_transform(self, frame: Frame, markers: list[Aruco]) -> tuple[Frame, [int, int]]:
-        pts = np.array([self.corners2pt(marker.corners) for marker in markers])
+        pts = np.array([corners2pt(marker.corners) for marker in markers])
         # obtain a consistent order of the points and unpack them
         # individually
-        src_pts = self.order_points(pts)
+        src_pts = order_points(pts)
         # pad
         src_pts = pad_rect(src_pts, self.xpad, self.ypad)
         (tl, tr, br, bl) = src_pts
@@ -224,6 +200,34 @@ class PreProcessor(BaseProcess):
         # we want to have a function set to project from/onto the warped/un-warped version of the frame
         # for future reference. so we return the warped image and the used homography matrix
         return warped, homography_matrix
+
+
+def corners2pt(corners) -> [int, int]:
+    moments = cv2.moments(corners)
+    c_x = int(moments["m10"] / moments["m00"])
+    c_y = int(moments["m01"] / moments["m00"])
+    return [c_x, c_y]
+
+
+def order_points(pts: np.ndarray) -> np.ndarray:
+    # initialize a list of coordinates that will be ordered
+    # such that the first entry in the list is the top-left,
+    # the second entry is the top-right, the third is the
+    # bottom-right, and the fourth is the bottom-left
+    rect = np.zeros((4, 2), dtype="float32")
+    # the top-left point will have the smallest sum, whereas
+    # the bottom-right point will have the largest sum
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]
+    rect[2] = pts[np.argmax(s)]
+    # now, compute the difference between the points, the
+    # top-right point will have the smallest difference,
+    # whereas the bottom-left will have the largest difference
+    diff = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(diff)]
+    rect[3] = pts[np.argmax(diff)]
+    # return the ordered coordinates
+    return rect
 
 
 def project_point(pt: Point, homography_matrix: np.array, mode: WarpMode):

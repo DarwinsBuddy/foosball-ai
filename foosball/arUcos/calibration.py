@@ -14,10 +14,8 @@ import numpy as np
 import yaml
 from tqdm import tqdm
 
-from .models import Aruco
-from ..models import Frame
+from ..models import Frame, Aruco
 from ..utils import ensure_cpu
-
 
 logger = logging.getLogger(__name__)
 DEFAULT_MARKER_SEPARATION_CM = 1.0
@@ -34,7 +32,7 @@ class Calibration:
     dist_coefficients: np.array = None
     _image_markers: List[List[Aruco]] = []
 
-    def __init__(self, board: aruco.GridBoard, camera_matrix: np.array = None, dist_coefficients: np.array = None):
+    def __init__(self, board: aruco.GridBoard = None, camera_matrix: np.array = None, dist_coefficients: np.array = None):
         self.camera_matrix = camera_matrix
         self.dist_coefficients = dist_coefficients
         self.board = board
@@ -62,8 +60,7 @@ class Calibration:
         logger.debug("Calibrating camera ....")
         if len(corners_list) > 0:
             try:
-                ret, mtx, dist, rvecs, tvecs = aruco.calibrateCameraAruco(corners_list, id_list, np.array(counter),
-                                                                          self.board, shape, None, None)
+                ret, mtx, dist, rvecs, tvecs = aruco.calibrateCameraAruco(corners_list, id_list, np.array(counter), self.board, shape, None, None)
                 self.camera_matrix = mtx
                 self.dist_coefficients = dist
                 return True
@@ -127,13 +124,15 @@ def draw_markers(img: Frame, arucos: list[Aruco], calib: Calibration = None) -> 
     return img
 
 
-def detect_markers(image, detector: aruco.ArucoDetector) -> list[Aruco]:
+def detect_markers(image, detector: aruco.ArucoDetector, calib: Calibration) -> list[Aruco]:
     corners, ids, rejected_img_points = detector.detectMarkers(image)
     ids = ensure_cpu(ids)
     # if rejected_img_points is not None:
     #     logger.debug(f"Marker detection rejected {len(rejected_img_points)}")
+
     if ids is not None:
-        return [Aruco(np.array(i[0]), c) for i, c in list(zip(ids, corners))]
+        arucos = [Aruco(np.array(i[0]), c, None, None) for i, c in list(zip(ids, corners))]
+        return estimate_markers_poses(arucos, calib)
     else:
         return []
 
@@ -143,8 +142,8 @@ def estimate_markers_poses(arucos: List[Aruco], calib: Calibration):
     # Estimate pose of each marker and return the values rotation_vector and translation_vector
     # (different from those of camera coefficients)
     rotation_vectors, translation_vectors, marker_points = aruco.estimatePoseSingleMarkers(corners, 0.02,
-                                                                                               calib.camera_matrix,
-                                                                                               calib.dist_coefficients)
+                                                                                           calib.camera_matrix,
+                                                                                           calib.dist_coefficients)
     if rotation_vectors is not None and translation_vectors is not None:
         for i in range(0, len(arucos)):
             arucos[i].rotation_vector = np.array([rotation_vectors[i]])
@@ -157,22 +156,29 @@ def init_aruco_detector(aruco_dictionary, aruco_params):
     detector = aruco.ArucoDetector(aruco_dict, aruco_params)
     return detector, aruco_dict
 
+
 def generate_aruco_board(aruco_dict, marker_length_cm, marker_separation_cm):
     board = aruco.GridBoard((4, 5), marker_length_cm, marker_separation_cm, aruco_dict)
     return board
+
 
 def generate_aruco_board_image(board):
     board_img = aruco.drawPlanarBoard(board, (864, 1080), marginSize=0, borderBits=1)
     return board_img
 
-def print_aruco_board(filename='aruco.png', aruco_dictionary=aruco.DICT_4X4_1000, aruco_params=aruco.DetectorParameters(), marker_length_cm=DEFAULT_MARKER_LENGTH_CM, marker_separation_cm=DEFAULT_MARKER_SEPARATION_CM):
+
+def print_aruco_board(filename='aruco.png', aruco_dictionary=aruco.DICT_4X4_1000,
+                      aruco_params=aruco.DetectorParameters(), marker_length_cm=DEFAULT_MARKER_LENGTH_CM,
+                      marker_separation_cm=DEFAULT_MARKER_SEPARATION_CM):
     detector, aruco_dict = init_aruco_detector(aruco_dictionary=aruco_dictionary, aruco_params=aruco_params)
     board = generate_aruco_board(aruco_dict, marker_length_cm, marker_separation_cm)
     board_img = generate_aruco_board_image(board)
     cv2.imwrite(filename, board_img)
 
+
 def calibrate_camera(camera_id=None, calibration_video_path=None, calibration_images_path=None, headless=False,
-                     aruco_dictionary=aruco.DICT_4X4_1000, marker_length_cm=DEFAULT_MARKER_LENGTH_CM, marker_separation_cm=DEFAULT_MARKER_SEPARATION_CM,
+                     aruco_dictionary=aruco.DICT_4X4_1000, marker_length_cm=DEFAULT_MARKER_LENGTH_CM,
+                     marker_separation_cm=DEFAULT_MARKER_SEPARATION_CM,
                      aruco_params=aruco.DetectorParameters(), recording_time=5, sample_size=None):
     print("CAMERA: ", camera_id)
     print("images: ", calibration_images_path)
@@ -215,9 +221,8 @@ def calibrate_camera(camera_id=None, calibration_video_path=None, calibration_im
         while (camera_id is None or (time.time() - start) < recording_time) and ret:
             img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
             shape = img_gray.shape
-            arucos = detect_markers(img_gray, detector)
+            arucos = detect_markers(img_gray, detector, calib)
             if not headless:
-                arucos = estimate_markers_poses(arucos, calib)
                 img = draw_markers(img, arucos, calib)
             calib.add_image_markers(arucos)
             if not headless:

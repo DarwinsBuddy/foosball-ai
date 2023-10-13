@@ -35,39 +35,49 @@ on a foosball table (🇦🇹 Wuzzler), track the ball and count goals.
 * opencv
   
 ## Install  
-  
+
+0. Prerequisites
+  * Mac OS (suggestion)
+    ```commandline
+    brew install pyenv pyenv-virtualenv
+    pyenv install 3.11
+    pyenv exec pip install
+    brew install opencv
+    ```
+  * Linux
+    * Ubuntu `sudo apt-get install python3 python3-pip python3-opencv`
+    * Arch `pacman -S python python-pip opencv`
+
 1. Setup a venv  
-```#!/bin/sh  
-python3 -m venv ./venv  
-```  
+    ```#!/bin/sh  
+    python3 -m venv ./venv  
+    ```  
 2. Activate venv  
-```#!/bin/sh  
-. ./venv/bin/activate  
-```  
+    ```#!/bin/sh  
+    . ./venv/bin/activate  
+    ```  
 3. Install requirements  
-```#!/bin/sh  
-pip install -r requirements.txt  
-```
+    ```#!/bin/sh  
+    pip install -r requirements.txt  
+    ```
 ## Run  
 0. (optional) Download video
-   1. demo video
-      1. orange ball https://drive.google.com/file/d/1tmaV2U_amzUHP3u4lQtom16IFclRu5Fe/view?usp=sharing
-      1. yellow ball https://mega.nz/file/UpNSwaBY#7__EPElzGkf6ohM_Oe5kxjJpIV2TUmJ8k63HJV0X4oU
-   1. calibration video for camera calibration
-      1. orange ball (not needed, since it's without arUco markers)
-      2. yellow ball https://mega.nz/file/w98z3ABK#e6rwmejpqAgv3Ipc5CqkkAjdf-M0NEEtcTlGkSc4hUo
-1. Activate venv  
-> ```#!/bin/sh  
-> . ./venv/bin/activate  
-> ```
-2. Run camera calibration
-> ```#!/bin/sh  
-> python3 -m foosball -c cam -cv <path-to-calibration-video>.mp4
-> ```
+   - [demo video](https://mega.nz/file/UpNSwaBY#7__EPElzGkf6ohM_Oe5kxjJpIV2TUmJ8k63HJV0X4oU) (w/ yellow ball)
+   - (optional) [calibration video for camera calibration](https://mega.nz/file/w98z3ABK#e6rwmejpqAgv3Ipc5CqkkAjdf-M0NEEtcTlGkSc4hUo) (w/ yellow ball)
+1. Activate venv (if not already done in the **Install** step)
+    > ```#!/bin/sh
+    > . ./venv/bin/activate  
+    > ```
+2. Run camera calibration (optional for demo)
+    > You can skip this step if you chose to download above demo video, since the provided `calibration.yaml`
+    > is already tailored to the recorded video's camera
+    > ```#!/bin/sh  
+    > python3 -m foosball -c cam -cv <path-to-calibration-video>.mp4
+    > ```
 3. Run
-```#!/bin/sh  
-python3 -m foosball -f <path-to-file>.mp4
-```
+    ```#!/bin/sh  
+    python3 -m foosball -f <path-to-file>.mp4
+    ```
 ## Misc
 ### Calibration
 #### Color

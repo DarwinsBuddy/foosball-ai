@@ -91,6 +91,7 @@ class PreProcessor(BaseProcess):
 
     def process(self, msg: Msg) -> Msg:
         frame = msg.kwargs['frame']
+        timestamp = msg.kwargs['time']
         frame = self.proc(frame)
         frame = scale(frame, self.dims, ScaleDirection.DOWN)
         preprocessed = frame
@@ -147,7 +148,7 @@ class PreProcessor(BaseProcess):
         except Exception as e:
             self.logger.error(f"Error in preprocess {e}")
             traceback.print_exc()
-        return Msg(kwargs={"result": PreprocessResult(self.iproc(frame), self.iproc(preprocessed), self.homography_matrix, self.goals, info)})
+        return Msg(kwargs={"time": timestamp, "result": PreprocessResult(self.iproc(frame), self.iproc(preprocessed), self.homography_matrix, self.goals, info)})
 
     @staticmethod
     def corners2pt(corners) -> [int, int]:

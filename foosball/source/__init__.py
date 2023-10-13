@@ -1,4 +1,5 @@
 import multiprocessing
+import time
 from abc import abstractmethod
 from multiprocessing import Queue
 from queue import Full
@@ -52,8 +53,8 @@ class Source(Thread):
     def output(self) -> multiprocessing.Queue:
         return self.Q
 
-    def send_frame(self, frame) -> None:
-        msg = Msg(kwargs={'frame': frame}) if frame is not None else None
+    def send_frame(self, frame, timestamp) -> None:
+        msg = Msg(kwargs={'frame': frame, 'time': timestamp}) if frame is not None else None
         while True:
             try:
                 # try to put it into the queue
@@ -68,13 +69,14 @@ class Source(Thread):
         while not self.stopped:
             # read the next frame from the file
             grabbed, frame = self.read_frame()
+            timestamp = time.perf_counter_ns()
             # if the `grabbed` boolean is `False`, then we have
             # reached the end of the video file
             if grabbed is None or not grabbed:
                 print("Could not grab")
                 self.stopped = True
                 frame = None
-            self.send_frame(frame)
+            self.send_frame(frame, timestamp)
         print("Release")
         self.close_capture()
 

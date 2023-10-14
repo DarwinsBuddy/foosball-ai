@@ -58,6 +58,10 @@ class AI:
                 reset_config(self.calibration, self.calibration_config())
             return False
 
+        def reset_score():
+            self.tracking.reset_score()
+            return False
+
         def store_calibration():
             if self.calibration is not None:
                 self.calibration_config().store()
@@ -85,7 +89,7 @@ class AI:
             ord('q'): lambda: True,
             Key.SPACE.value: pause,
             ord('s'): store_calibration,
-            ord('r'): reset_calibration,
+            ord('r'): reset_calibration if self.calibration else reset_score,
             ord('n'): step_frame
         }
 

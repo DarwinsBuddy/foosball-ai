@@ -110,3 +110,6 @@ class Tracking:
             return self.tracker.config_input(config)
         elif self.calibration == "goal":
             return self.preprocessor.config_input(config)
+
+    def reset_score(self):
+        self.analyzer.reset_score()

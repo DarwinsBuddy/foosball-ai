@@ -47,6 +47,10 @@ class Score:
     blue: int = 0
     red: int = 0
 
+    def reset(self):
+        self.blue = 0
+        self.red = 0
+
     def inc(self, team: Team):
         if team == Team.BLUE:
             self.blue += 1

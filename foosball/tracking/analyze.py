@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 import traceback
 from typing import Optional
 
@@ -17,6 +18,7 @@ class Analyzer(BaseProcess):
         super().__init__(name="Analyzer")
         self.kwargs = kwargs
         self.score = Score()
+        self.score_reset = multiprocessing.Event()
         self.audio = audio
         self.webhook = webhook
         self.last_track: Optional[Track] = None
@@ -47,6 +49,9 @@ class Analyzer(BaseProcess):
         track = track_result.ball_track
         frame = track_result.frame
         info = track_result.info
+        if self.score_reset.is_set():
+            self.score.reset()
+            self.score_reset.clear()
         try:
             team: Team = self.goal_shot(goals, track) if None not in [goals, track, self.last_track] else None
             self.score.inc(team)
@@ -59,3 +64,6 @@ class Analyzer(BaseProcess):
         self.last_track = track
         return Msg(kwargs={"result": AnalyzeResult(score=self.score, ball=ball, goals=goals, frame=frame, info=info,
                                                    ball_track=track)})
+
+    def reset_score(self):
+        self.score_reset.set()

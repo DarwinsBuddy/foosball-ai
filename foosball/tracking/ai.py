@@ -1,5 +1,6 @@
 import logging
 import traceback
+from dataclasses import dataclass
 from queue import Empty
 
 from imutils.video import FPS
@@ -15,6 +16,13 @@ from ..source import Source
 
 BLANKS = (' ' * 80)
 
+MAX_SPEED_RESET_THRESHOLD = 2  # seconds
+
+@dataclass
+class SpeedWrapper:
+    speed: float
+    timestamp: int
+
 
 class AI:
 
@@ -28,6 +36,7 @@ class AI:
         self.calibrationMode = kwargs.get(CALIBRATION_MODE)
         self._stopped = False
         self.infoVerbosity = Verbosity(kwargs.get(INFO_VERBOSITY)) if kwargs.get(INFO_VERBOSITY) else None
+        self.max_speed: SpeedWrapper | None = None
 
         self.output = None if kwargs.get(OUTPUT) is None else WriteGear(kwargs.get(OUTPUT), logging=True)
         self.detection_frame = None
@@ -56,6 +65,11 @@ class AI:
 
     def stop(self):
         self._stopped = True
+
+    def update_max_speed(self, timestamp, speed):
+        if speed is not None and timestamp is not None:
+            if self.max_speed is None or ((timestamp-self.max_speed.timestamp)/(10**9)) > MAX_SPEED_RESET_THRESHOLD or self.max_speed.speed < speed:
+                self.max_speed = SpeedWrapper(speed, timestamp)
 
     def process_video(self):
         def reset_calibration():
@@ -107,11 +121,12 @@ class AI:
                         break
                     self.fps.update()
                     frame = msg.kwargs['result']
+                    self.update_max_speed(msg.kwargs.get('time'), msg.kwargs.get('speed'))
                     info: InfoLog = msg.kwargs['info']
                     self.fps.stop()
                     fps = int(self.fps.fps())
                     if not self.headless:
-                        self.render_fps(frame, fps)
+                        self.render_top_right(frame, fps)
                         self.sink.show(frame)
                         if self.output is not None:
                             self.output.write(frame)
@@ -139,8 +154,9 @@ class AI:
         self.tracking.stop()
         logging.debug("ai stopped")
 
-    @staticmethod
-    def render_fps(frame: Frame, fps: int):
+
+    def render_top_right(self, frame: Frame, fps: int):
+        speed_txt = f"{self.max_speed.speed:.2f}" if self.max_speed is not None else "-"
         frames_per_second = fps
         if frames_per_second >= 90:
             color = (0, 255, 0)
@@ -149,6 +165,8 @@ class AI:
         else:
             color = (100, 0, 255)
         r_text(frame, f"FPS: {frames_per_second}", frame.shape[1], 0, color, background=BLACK, text_scale=0.5,
+               thickness=1, padding=(20, 20), ground_zero='tr')
+        r_text(frame, f"MAX Speed: {speed_txt.ljust(5)} km/h", frame.shape[1], 50, color, background=BLACK, text_scale=0.5,
                thickness=1, padding=(20, 20), ground_zero='tr')
 
     def render_calibration(self):

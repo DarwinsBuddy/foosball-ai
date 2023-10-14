@@ -63,7 +63,11 @@ class Analyzer(BaseProcess):
             traceback.print_exc()
         self.last_track = track
         info.append(Info(verbosity=Verbosity.INFO, title="Score", value=self.score.to_string()))
-        return Msg(kwargs={"time": timestamp, "result": AnalyzeResult(score=self.score, ball=ball, goals=goals, frame=frame, info=info, ball_track=track)})
+        return Msg(kwargs={"time": timestamp,
+                           "result": AnalyzeResult(score=self.score, ball=ball, goals=goals, frame=frame, info=info,
+                                                   ball_track=track),
+                           "speed": msg.kwargs['speed']
+                           })
 
     def reset_score(self):
         self.score_reset.set()

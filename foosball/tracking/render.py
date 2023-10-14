@@ -132,9 +132,9 @@ class Renderer(BaseProcess):
                 r_score(f, score, text_scale=1, thickness=4)
                 if self.infoVerbosity is not None:
                     r_info(f, shape, info.filter(self.infoVerbosity), text_scale=0.5, thickness=1)
-                return Msg(kwargs={"time": timestamp, "result": self.iproc(f), 'info': info})
+                return Msg(kwargs={"time": timestamp, "result": self.iproc(f), 'info': info, "speed": msg.kwargs['speed']})
             else:
-                return Msg(kwargs={"time": timestamp, "result": None, 'info': info})
+                return Msg(kwargs={"time": timestamp, "result": None, 'info': info, "speed": msg.kwargs['speed']})
 
         except Exception as e:
             logger.error(f"Error in renderer {e}")

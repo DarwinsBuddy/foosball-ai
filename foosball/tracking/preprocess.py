@@ -1,4 +1,5 @@
 import traceback
+from dataclasses import dataclass
 from enum import Enum
 from multiprocessing import Queue
 from queue import Empty
@@ -18,6 +19,11 @@ from ..utils import ensure_cpu, generate_processor_switches, relative_change, sc
 
 TEXT_SCALE = 0.8
 TEXT_COLOR = (0, 255, 0)
+
+@dataclass
+class PositionEstimationInputs:
+    transformation_matrices: np.array
+    marker_positions_3d: np.array
 
 
 class WarpMode(Enum):
@@ -58,6 +64,7 @@ class PreProcessor(BaseProcess):
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
         self.detector, _ = calibration.init_aruco_detector(aruco_dictionary, aruco_params)
         self.markers = []
+        self.position_estimation_inputs = None
         self.homography_matrix = None
         self.frames_since_last_marker_detection = 0
         self.goals = None
@@ -117,7 +124,7 @@ class PreProcessor(BaseProcess):
                     # logging.debug(f"markers {[list(m.id)[0] for m in markers]}")
                     if len(markers) == 4:
                         self.markers = markers
-
+                        self.position_estimation_inputs = self.calc_3d_position_inputs(markers)
                 self.frames_since_last_marker_detection = (self.frames_since_last_marker_detection + 1) % self.redetect_markers_frame_threshold
                 if len(self.markers) == 4:
                     # crop and warp
@@ -151,7 +158,13 @@ class PreProcessor(BaseProcess):
             traceback.print_exc()
         return Msg(kwargs={
             "time": timestamp,
-            "result": PreprocessResult(self.iproc(frame), self.iproc(preprocessed), self.markers, self.homography_matrix, self.goals, info)
+            "original": self.iproc(frame),
+            "preprocessed": self.iproc(preprocessed),
+            "arucos": self.markers,
+            "homography_matrix": self.homography_matrix,  # 3x3 matrix used to warp the image and project points
+            "goals": self.goals,
+            "info": info,
+            "positionEstimationInputs": self.position_estimation_inputs
         })
 
     def four_point_transform(self, frame: Frame, markers: list[Aruco]) -> tuple[Frame, [int, int]]:
@@ -200,6 +213,24 @@ class PreProcessor(BaseProcess):
         # we want to have a function set to project from/onto the warped/un-warped version of the frame
         # for future reference. so we return the warped image and the used homography matrix
         return warped, homography_matrix
+
+    def calc_3d_position_inputs(self, arucos: list[Aruco]) -> PositionEstimationInputs:
+        aruco_marker_size_cm = 5.0  # TODO let this come from somewhere fixed or arguments
+        aruco_points = [corners2pt(a.corners) for a in arucos]
+        # Define the transformation matrices for the ArUco markers
+        transformation_matrices = []
+        marker_positions_3d = []
+        for i in range(len(arucos)):
+            scale_factor = aruco_marker_size_cm / np.linalg.norm(arucos[i].translation_vector)
+            rvec = arucos[i].rotation_vector * scale_factor
+            R, _ = cv2.Rodrigues(rvec)
+            T = arucos[i].translation_vector * scale_factor
+            extrinsic_matrix = np.hstack((R, T.reshape(3, 1)))
+            transformation_matrices.append(extrinsic_matrix)
+            homogeneous_marker = np.hstack((aruco_points[i], 1))
+            marker_position_3d = np.dot(np.linalg.inv(self.camera_calibration.camera_matrix), homogeneous_marker)
+            marker_positions_3d.append(marker_position_3d)
+        return PositionEstimationInputs(transformation_matrices, marker_positions_3d)
 
 
 def corners2pt(corners) -> [int, int]:

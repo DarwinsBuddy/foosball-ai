@@ -163,13 +163,3 @@ class AnalyzeResult:
     ball_track: Track
     ball: Blob
     info: Info
-
-
-@dataclass
-class PreprocessResult:
-    original: CPUFrame
-    preprocessed: Optional[CPUFrame]
-    arucos: list[Aruco]
-    homography_matrix: Optional[np.ndarray]  # 3x3 matrix used to warp the image and project points
-    goals: Optional[Goals]
-    info: Info

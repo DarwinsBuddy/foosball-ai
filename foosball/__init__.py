@@ -54,7 +54,7 @@ def get_argparse():
                     help="Vertical padding applied to ROI detected by aruco markers")
     ap.add_argument("-s", "--scale", type=float, default=0.4, help="Scale stream")
     ap.add_argument("-cap", "--capture", choices=['cv', 'gear'], default='gear', help="capture backend")
-    ap.add_argument("-d", "--display", choices=['cv', 'gear'], default='cv', help="display backend")
+    ap.add_argument("-d", "--display", choices=['cv', 'gear'], default='cv', help="display backend cv=direct display, gear=stream")
     ap.add_argument("-g", "--gpu", choices=['preprocess', 'tracker', 'render'], nargs='+', default=["render"],
                     help="use GPU")
     ap.add_argument("-A", "--audio", action='store_true', help="Enable audio")
@@ -81,24 +81,22 @@ def main(kwargs):
     elif kwargs.get('file') or kwargs.get('cameraId') is not None:
         if not kwargs.get('headless'):
             if kwargs.get('display') == 'cv':
-                from .display.cv import OpenCVDisplay
+                from .sink.opencv import DisplaySink
 
-                dis = OpenCVDisplay()
+                dis = DisplaySink()
             elif kwargs.get('display') == 'gear':
-                logging.info("[ALPHA] Feature - Streaming not fully supported")
-                from .display.gear import StreamDisplay
-
-                dis = StreamDisplay()
+                from .sink.gear import StreamSink
+                dis = StreamSink()
             else:
                 return usage_and_exit()
 
         source = kwargs.get('file') or kwargs.get('cameraId')
         if kwargs.get('capture') == 'gear':
-            from .capture.GearStream import GearStream
-            cap = GearStream(source, framerate=32, resolution=(1280, 720))
+            from .source.gear import GearSource
+            cap = GearSource(source, framerate=32, resolution=(1280, 720))
         elif kwargs.get('capture') == 'cv':
-            from .capture.OpenCVStream import OpenCVStream
-            cap = OpenCVStream(source)
+            from .source.opencv import OpenCVSource
+            cap = OpenCVSource(source)
         else:
             return usage_and_exit()
         ai = AI(cap, dis, **kwargs)

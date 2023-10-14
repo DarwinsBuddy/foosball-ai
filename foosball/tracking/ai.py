@@ -7,8 +7,8 @@ from vidgear.gears import WriteGear
 
 from . import Tracking, get_ball_config, get_goal_config
 from .render import r_text, BLACK
-from ..capture.Stream import Stream
-from ..display.cv import OpenCVDisplay, get_slider_config, add_config_input, reset_config, Key
+from ..source import Source
+from ..sink.opencv import DisplaySink, get_slider_config, add_config_input, reset_config, Key
 from ..models import FrameDimensions, Frame
 
 BLANKS = (' ' * 80)
@@ -16,13 +16,13 @@ BLANKS = (' ' * 80)
 
 class AI:
 
-    def __init__(self, stream: Stream, dis, *args, **kwargs):
+    def __init__(self, source: Source, dis, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
         self.logger = logging.getLogger("AI")
-        self.stream = stream
+        self.source = source
         self.headless = kwargs.get('headless')
-        self.display = dis if not self.headless else None
+        self.sink = dis if not self.headless else None
         self.paused = False
         self.calibration = self.kwargs.get('calibration')
         self._stopped = False
@@ -35,15 +35,15 @@ class AI:
             self.calibration_config = lambda: self.ball_config if self.calibration == 'ball' else self.goals_config
         self.detection_frame = None
 
-        original = self.stream.dim()
+        original = self.source.dim()
         self.scale = self.kwargs.get('scale')
         scaled = self.scale_dim(original, self.scale)
         self.dims = FrameDimensions(original, scaled, self.scale)
 
-        self.tracking = Tracking(self.stream, self.dims, self.ball_config, self.goals_config, **self.kwargs)
+        self.tracking = Tracking(self.source, self.dims, self.ball_config, self.goals_config, **self.kwargs)
 
         if not self.headless and self.calibration is not None:
-            self.calibration_display = OpenCVDisplay(self.calibration, pos='br')
+            self.calibration_display = DisplaySink(self.calibration, pos='br')
             # init slider window
             add_config_input(self.calibration, self.calibration_config())
 
@@ -104,33 +104,33 @@ class AI:
                     fps = int(self.fps.fps())
                     if not self.headless:
                         self.render_fps(f, fps)
-                        self.display.show(f)
+                        self.sink.show(f)
                         if self.output is not None:
                             self.output.write(f)
                         if self.calibration is not None:
                             self.render_calibration()
-                        if self.display.render(callbacks=callbacks):
+                        if self.sink.render(callbacks=callbacks):
                             break
                     else:
                         print(f"{f} - FPS: {fps} {BLANKS}", end="\r")
                 except Empty:
                     # logger.debug("No new frame")
                     pass
-                if not self.headless and self.display.render(callbacks=callbacks):
+                if not self.headless and self.sink.render(callbacks=callbacks):
                     break
             except Exception as e:
                 self.logger.error(f"Error in stream {e}")
                 traceback.print_exc()
 
         if not self.headless:
-            self.display.stop()
+            self.sink.stop()
         if self.calibration is not None:
             self.calibration_display.stop()
         self.tracking.stop()
         logging.debug("ai stopped")
 
-
-    def render_fps(self, frame: Frame, fps: int):
+    @staticmethod
+    def render_fps(frame: Frame, fps: int):
         frames_per_second = fps
         if frames_per_second >= 90:
             color = (0, 255, 0)

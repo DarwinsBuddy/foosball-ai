@@ -8,7 +8,7 @@ from foosball.models import Frame
 from foosball.pipe.BaseProcess import Msg
 
 
-class Stream(Thread):
+class Source(Thread):
 
     def __init__(self, maxsize=128, skip_frames=True, timeout=2, *args, **kwargs):
         super().__init__(daemon=True, *args, **kwargs)

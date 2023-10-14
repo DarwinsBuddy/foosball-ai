@@ -1,10 +1,10 @@
 import cv2
 import numpy as np
 
-from foosball.capture.Stream import Stream
+from . import Source
 
 
-class OpenCVStream(Stream):
+class OpenCVSource(Source):
 
     def __init__(self, source: str | int, *args, **kwargs):
         super().__init__(*args, **kwargs)

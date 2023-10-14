@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import yaml
 
+from . import Sink
 from foosball.tracking import BallConfig
 from foosball.models import rgb2hsv, hsv2rgb, GoalConfig
 
@@ -22,9 +23,10 @@ class Key(Enum):
     ESC = 27
 
 
-class OpenCVDisplay:
+class DisplaySink(Sink):
 
-    def __init__(self, name='frame', pos='tl'):
+    def __init__(self, name='frame', pos='tl', *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.name = name
         cv2.namedWindow(self.name)
         [x, y] = self._position(pos)
@@ -50,12 +52,11 @@ class OpenCVDisplay:
         if frame is not None:
             cv2.imshow(self.name, frame)
 
-    @staticmethod
-    def render(callbacks: dict[int, Callable]):
+    def render(self, callbacks: dict[int, Callable] = None):
         return wait(loop=False, interval=1, callbacks=callbacks)
 
 
-def wait(loop=False, interval=0.1, callbacks=None):
+def wait(loop=False, interval=1, callbacks=None):
     if callbacks is None:
         callbacks = {ord('q'): lambda: True}
     while True:

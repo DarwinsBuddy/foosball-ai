@@ -2,10 +2,10 @@ import logging
 import cv2
 from vidgear.gears import VideoGear
 
-from foosball.capture.Stream import Stream
+from . import Source
 
 
-class GearStream(Stream):
+class GearSource(Source):
 
     def __init__(self, video=None, resolution=(640, 480), framerate=60, **kwargs):
         # not skipping frames is crucial

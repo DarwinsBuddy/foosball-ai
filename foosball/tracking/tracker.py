@@ -63,19 +63,23 @@ class Tracker(BaseProcess):
         return self.ball_track
 
     def calc_speed(self, timestamp) -> float | None:
-        v_km_per_hour = None
+        v_mps = None
         if len(self.ball_track_3d) > 1 and self.ball_track_3d[-2] is not None and self.ball_track_3d[-1] is not None:
             last_position = self.ball_track_3d[-2]
             current_position = self.ball_track_3d[-1]
             distance_cm = cv2.norm(last_position - current_position, cv2.NORM_L2)  # TODO check if its really cm
+            if distance_cm > 100:
+                print("DISTANCE: ", distance_cm)
+                print(f"POINT A: 3D= {self.ball_track_3d[-2]}    2D={self.ball_track[-2]}")
+                print(f"POINT B: 3D= {self.ball_track_3d[-1]}    2D={self.ball_track[-1]}")
             if self.last_timestamp is not None:
                 elapsed_time_ms = 0.000001 * (timestamp - self.last_timestamp)
-                v_km_per_hour = 3.6 * (distance_cm * 10 / elapsed_time_ms)
-        return v_km_per_hour
+                v_mps = (distance_cm * 10 / elapsed_time_ms)
+        return v_mps
 
-    def get_info(self, v_km_per_hour: float) -> InfoLog:
+    def get_info(self, v_mps: float) -> InfoLog:
         info = InfoLog(infos=[
-            Info(verbosity=Verbosity.INFO, title="Speed", value=f"{v_km_per_hour:.2f} km/h".ljust(10) if v_km_per_hour is not None else "-".ljust(10)),
+            Info(verbosity=Verbosity.INFO, title="Speed", value=f"{f'{v_mps:.2f}'.rjust(6) if v_mps is not None else '-'.rjust(6)} m/sec"),
             Info(verbosity=Verbosity.DEBUG, title="Track length", value=f"{str(sum([1 for p in self.ball_track or [] if p is not None])).rjust(2, ' ')}"),
             Info(verbosity=Verbosity.TRACE, title="Calibration", value=f"{self.calibrationMode if self.calibrationMode is not None else 'off'}"),
             Info(verbosity=Verbosity.TRACE, title="Tracker", value=f"{'off' if self.off else 'on'}")
@@ -144,12 +148,14 @@ class Tracker(BaseProcess):
             logger.error(f"Error in track {e}")
             traceback.print_exc()
         if not self.verbose:
-            return Msg(kwargs={"time": timestamp,
+            return Msg(kwargs={**msg.kwargs,
+                               "time": timestamp,
                                "result": TrackResult(original, goals, ball_track, ball, info),
                                "speed": speed
                                })
         else:
-            return Msg(kwargs={"time": timestamp,
+            return Msg(kwargs={**msg.kwargs,
+                               "time": timestamp,
                                "result": TrackResult(preprocessed, goals, ball_track, ball, info),
                                "speed": speed
                                })

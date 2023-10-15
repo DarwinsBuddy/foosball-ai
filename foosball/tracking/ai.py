@@ -164,9 +164,10 @@ class AI:
             color = (0, 255, 127)
         else:
             color = (100, 0, 255)
-        r_text(frame, f"FPS: {frames_per_second}", frame.shape[1], 0, color, background=BLACK, text_scale=0.5,
+        r_text(frame, f"FPS {frames_per_second}", frame.shape[1], 0, color, background=BLACK, text_scale=0.5,
                thickness=1, padding=(20, 20), ground_zero='tr')
-        r_text(frame, f"MAX Speed: {speed_txt.ljust(5)} km/h", frame.shape[1], 50, color, background=BLACK, text_scale=0.5,
+
+        r_text(frame, f"max. v {speed_txt.rjust(6, ' ')} m/sec", frame.shape[1], 50, color, background=BLACK, text_scale=0.5,
                thickness=1, padding=(20, 20), ground_zero='tr')
 
     def render_calibration(self):

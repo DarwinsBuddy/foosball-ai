@@ -141,7 +141,7 @@ def estimate_markers_poses(arucos: List[Aruco], calib: Calibration):
     corners = np.array([a.corners for a in arucos])
     # Estimate pose of each marker and return the values rotation_vector and translation_vector
     # (different from those of camera coefficients)
-    rotation_vectors, translation_vectors, marker_points = aruco.estimatePoseSingleMarkers(corners, 0.02,
+    rotation_vectors, translation_vectors, marker_points = aruco.estimatePoseSingleMarkers(corners, 0.02,  # Assuming 1 pixel = 1 millimeter
                                                                                            calib.camera_matrix,
                                                                                            calib.dist_coefficients)
     if rotation_vectors is not None and translation_vectors is not None:

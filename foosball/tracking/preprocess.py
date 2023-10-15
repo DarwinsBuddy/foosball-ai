@@ -161,6 +161,7 @@ class PreProcessor(BaseProcess):
             "original": self.iproc(frame),
             "preprocessed": self.iproc(preprocessed),
             "arucos": self.markers,
+            "calibration": self.calibration,
             "homography_matrix": self.homography_matrix,  # 3x3 matrix used to warp the image and project points
             "goals": self.goals,
             "info": info,

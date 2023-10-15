@@ -42,6 +42,7 @@ class Analyzer(BaseProcess):
             hooks.webhook(generate_goal_webhook(team))
 
     def process(self, msg: Msg) -> Msg:
+        kwargs = msg.kwargs
         track_result = msg.kwargs['result']
         timestamp = msg.kwargs['time']
         goals = track_result.goals
@@ -63,7 +64,7 @@ class Analyzer(BaseProcess):
             traceback.print_exc()
         self.last_track = track
         info.append(Info(verbosity=Verbosity.INFO, title="Score", value=self.score.to_string()))
-        return Msg(kwargs={"time": timestamp,
+        return Msg(kwargs={**kwargs, "time": timestamp,
                            "result": AnalyzeResult(score=self.score, ball=ball, goals=goals, frame=frame, info=info,
                                                    ball_track=track),
                            "speed": msg.kwargs['speed']

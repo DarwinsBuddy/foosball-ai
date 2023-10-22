@@ -6,8 +6,8 @@ import numpy as np
 
 from const import INFO_VERBOSITY
 from .preprocess import corners2pt, PositionEstimationInputs
-from ..arUcos.calibration import draw_markers
-from ..models import Goal, Score, FrameDimensions, Blob, InfoLog, Verbosity
+from ..arUcos.camera_calibration import draw_markers
+from ..models import Goal, Score, FrameDimensions, Blob, InfoLog, Verbosity, Frame, Aruco
 from ..pipe.BaseProcess import Msg, BaseProcess
 from ..utils import generate_processor_switches
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ def r_info(frame, shape: tuple[int, int, int], info: InfoLog, text_scale=1.0, th
     for i in info:
         text = i.to_string()
         if w + x > width:
-            cv2.rectangle(frame, (x, y), (width, y - h), BLACK, -1) # fill
+            cv2.rectangle(frame, (x, y), (width, y - h), BLACK, -1)  # fill
             x = 0
             y = y - h
         [x0, _, w, h] = r_text(frame, text, x, y, text_color(text, i.value), text_scale=text_scale, thickness=thickness, background=BLACK, padding=(20, 20), ground_zero='bl')
@@ -112,9 +112,10 @@ class Renderer(BaseProcess):
         self.infoVerbosity = Verbosity(kwargs.get(INFO_VERBOSITY)) if kwargs.get(INFO_VERBOSITY) else None
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
 
-    def r_distance(self, frame: Frame, arucos: list[Aruco], position_estimation_inputs: PositionEstimationInputs):
+    @staticmethod
+    def r_distance(frame: Frame, arucos: list[Aruco], position_estimation_inputs: PositionEstimationInputs):
         if arucos is not None:
-            (i1, a1), (i2,a2) = [(i, a) for i, a in enumerate(arucos) if a.id in [0, 3]]
+            (i1, a1), (i2, a2) = [(i, a) for i, a in enumerate(arucos) if a.id in [0, 3]]
             apt1 = np.array(corners2pt(a1.corners))
             apt2 = np.array(corners2pt(a2.corners))
             cv2.line(frame, apt1, apt2, ORANGE, 2, 1)
@@ -124,7 +125,6 @@ class Renderer(BaseProcess):
             d = cv2.norm(position_estimation_inputs.marker_positions_3d[i1], position_estimation_inputs.marker_positions_3d[i2], cv2.NORM_L2)
             pos = [int(x) for x in (apt1 + apt2) / 2]
             r_text(frame, f'{d:2f} cm', pos[0], pos[1], ORANGE, thickness=2)
-
 
     def process(self, msg: Msg) -> Msg:
         analyze_result = msg.kwargs['result']

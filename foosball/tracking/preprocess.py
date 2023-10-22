@@ -8,10 +8,11 @@ import cv2
 import numpy as np
 
 from const import CalibrationMode, OFF
-from ..arUcos import calibration, Calibration
-from ..arUcos.models import Aruco
-from ..detectors.color import GoalDetector, GoalColorConfig
-from ..models import Frame, PreprocessResult, Point, Rect, Blob, Goals, FrameDimensions, ScaleDirection, \
+from ..arUcos.camera_calibration import CameraCalibration, init_aruco_detector, detect_markers
+from ..models import Aruco, Point3D
+from ..detectors import GoalDetector
+from ..detectors.color import GoalColorConfig
+from ..models import Frame, Point, Rect, Blob, Goals, FrameDimensions, ScaleDirection, \
     InfoLog, Info, Verbosity
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..pipe.Pipe import clear
@@ -46,12 +47,13 @@ def pad_rect(rectangle: Rect, xpad: int, ypad: int) -> Rect:
 
 
 class PreProcessor(BaseProcess):
-    def __init__(self, dims: FrameDimensions, goal_detector: GoalDetector, headless=True, mask=None, used_markers=None,
+    def __init__(self, dims: FrameDimensions, distance: float, goal_detector: GoalDetector, headless=True, mask=None, used_markers=None,
                  redetect_markers_frames: int = 60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
                  aruco_params=cv2.aruco.DetectorParameters(), xpad: int = 50, ypad: int = 20,
                  goal_change_threshold: float = 0.10, useGPU: bool = False, calibrationMode=None, verbose=False, **kwargs):
         super().__init__(name="Preprocess")
         self.dims = dims
+        self.distance = distance
         self.goal_change_threshold = goal_change_threshold
         self.redetect_markers_frame_threshold = redetect_markers_frames
         if used_markers is None:
@@ -62,14 +64,14 @@ class PreProcessor(BaseProcess):
         self.xpad = xpad
         self.ypad = ypad
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
-        self.detector, _ = calibration.init_aruco_detector(aruco_dictionary, aruco_params)
+        self.detector, _ = init_aruco_detector(aruco_dictionary, aruco_params)
         self.markers = []
         self.position_estimation_inputs = None
         self.homography_matrix = None
         self.frames_since_last_marker_detection = 0
         self.goals = None
         self.calibrationMode = calibrationMode
-        self.camera_calibration = Calibration().load()
+        self.camera_calibration = CameraCalibration().load()
         self.verbose = verbose
         self.goals_calibration = self.calibrationMode == CalibrationMode.GOAL
         self.calibration_out = Queue() if self.goals_calibration else None
@@ -89,7 +91,7 @@ class PreProcessor(BaseProcess):
 
     def detect_markers(self, frame: Frame) -> list[Aruco]:
         img_gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        return calibration.detect_markers(img_gray, self.detector, self.camera_calibration)
+        return detect_markers(img_gray, self.detector, self.camera_calibration)
 
     def mask_frame(self, frame: Frame) -> Frame:
         """
@@ -161,7 +163,7 @@ class PreProcessor(BaseProcess):
             "original": self.iproc(frame),
             "preprocessed": self.iproc(preprocessed),
             "arucos": self.markers,
-            "calibration": self.calibration,
+            "calibration": self.camera_calibration,
             "homography_matrix": self.homography_matrix,  # 3x3 matrix used to warp the image and project points
             "goals": self.goals,
             "info": info,
@@ -217,7 +219,7 @@ class PreProcessor(BaseProcess):
 
     def calc_3d_position_inputs(self, arucos: list[Aruco]) -> PositionEstimationInputs:
         aruco_marker_size_cm = 5.0  # TODO let this come from somewhere fixed or arguments
-        aruco_points = [corners2pt(a.corners) for a in arucos]
+        # aruco_points = [corners2pt(a.corners) for a in arucos]
         # Define the transformation matrices for the ArUco markers
         transformation_matrices = []
         marker_positions_3d = []
@@ -228,11 +230,18 @@ class PreProcessor(BaseProcess):
             T = arucos[i].translation_vector * scale_factor
             extrinsic_matrix = np.hstack((R, T.reshape(3, 1)))
             transformation_matrices.append(extrinsic_matrix)
-            homogeneous_marker = np.hstack((aruco_points[i], 1))
-            marker_position_3d = np.dot(np.linalg.inv(self.camera_calibration.camera_matrix), homogeneous_marker)
-            marker_positions_3d.append(marker_position_3d)
+            marker_positions_3d.append(self.project_2d_to_3d(corners2pt(arucos[i].corners)))
         return PositionEstimationInputs(transformation_matrices, marker_positions_3d)
 
+    def project_2d_to_3d(self, point_2d) -> Point3D:
+        # Assuming point_2d is a NumPy array [x, y]
+        x, y = point_2d
+        z = self.distance  # Real-world distance between marker 1 and 2 (top left, top right)
+        homogeneous_point = np.array([x, y, 1])
+        inverse_intrinsic = np.linalg.inv(self.camera_calibration.camera_matrix)
+        point_homogeneous = np.dot(inverse_intrinsic, homogeneous_point)
+        point_3d = z * point_homogeneous
+        return point_3d
 
 def corners2pt(corners) -> [int, int]:
     moments = cv2.moments(corners)

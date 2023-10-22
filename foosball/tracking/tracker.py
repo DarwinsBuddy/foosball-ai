@@ -4,13 +4,15 @@ from multiprocessing import Queue
 from queue import Empty
 
 import cv2
+import numpy as np
+
 from const import CalibrationMode
 from cv2.typing import Point3d
 
-from .preprocess import WarpMode, project_blob
-from ..arUcos import Calibration
+from .preprocess import WarpMode, project_blob, PositionEstimationInputs
+from ..arUcos.camera_calibration import CameraCalibration
 from ..detectors.color import BallColorDetector, BallColorConfig
-from ..models import TrackResult, Track, Info, Blob, Goals, InfoLog, Verbosity
+from ..models import TrackResult, Track, Info, Blob, Goals, InfoLog, Verbosity, Point, Point3D
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..pipe.Pipe import clear
 from ..utils import generate_processor_switches
@@ -32,7 +34,7 @@ class Tracker(BaseProcess):
         self.off = off
         self.verbose = verbose
         self.calibrationMode = calibrationMode
-        self.camera_matrix = Calibration().load().camera_matrix
+        self.camera_matrix = CameraCalibration().load().camera_matrix
         self.last_timestamp = None
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
         # define the lower_ball and upper_ball boundaries of the
@@ -110,7 +112,7 @@ class Tracker(BaseProcess):
         ball = None
         goals = msg.kwargs['goals']
         ball_track = None
-        info = None
+        info = InfoLog(infos=[])
         speed = None
         try:
             if not self.off:
@@ -119,7 +121,7 @@ class Tracker(BaseProcess):
                         self.ball_detector.config = self.bounds_in.get_nowait()
                     except Empty:
                         pass
-                f = self.proc(preprocess_result.preprocessed if preprocess_result.preprocessed is not None else preprocess_result.original)
+                f = self.proc(preprocessed if preprocessed is not None else original)
                 ball_detection_result = self.ball_detector.detect(f)
                 ball = ball_detection_result.ball
                 # if we have some markers detected in preprocess step, we can determine the 3d position of the ball
@@ -141,8 +143,7 @@ class Tracker(BaseProcess):
                 self.update_3d_ball_track(ball3d)
                 ball_track = self.update_2d_ball_track(ball).copy()
             speed = self.calc_speed(timestamp)
-            info = preprocess_result.info
-            info.concat(self.get_info(ball_track))
+            info.concat(self.get_info(speed))
             self.last_timestamp = timestamp
         except Exception as e:
             logger.error(f"Error in track {e}")

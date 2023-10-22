@@ -7,7 +7,7 @@ import signal
 from const import CALIBRATION_MODE, CALIBRATION_IMG_PATH, CALIBRATION_VIDEO, CALIBRATION_SAMPLE_SIZE, ARUCO_BOARD, \
     FILE, CAMERA_ID, FRAMERATE, OUTPUT, CAPTURE, DISPLAY, BALL, XPAD, YPAD, SCALE, VERBOSE, HEADLESS, OFF, \
     MAX_PIPE_SIZE, INFO_VERBOSITY, GPU, AUDIO, WEBHOOK, BUFFER, BallPresets, CalibrationMode
-from foosball.arUcos.calibration import print_aruco_board, calibrate_camera
+from foosball.arUcos.camera_calibration import print_aruco_board, calibrate_camera
 from foosball.tracking.ai import AI
 
 logging.config.fileConfig("logging.ini")
@@ -64,6 +64,7 @@ def get_argparse():
     tracker.add_argument("-b", f"--{BUFFER}", type=int, default=16, help="max track buffer size")
 
     preprocess = ap.add_argument_group(title="Preprocessor", description="Options for the preprocessing step")
+    preprocess.add_argument("-dis", "--distance", type=float, default=125.0, help="Distance between ArucoMarker top left (1) and top right (2)")
     preprocess.add_argument("-xp", f"--{XPAD}", type=int, default=50,
                     help="Horizontal padding applied to ROI detected by aruco markers")
     preprocess.add_argument("-yp", f"--{YPAD}", type=int, default=20,

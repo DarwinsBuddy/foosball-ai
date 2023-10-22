@@ -27,7 +27,7 @@ CAMERA_MATRIX_PATH = 'camera_matrix.npy'
 CALIBRATION_YAML = 'calibration.yaml'
 
 
-class Calibration:
+class CameraCalibration:
     camera_matrix: np.array = None
     dist_coefficients: np.array = None
     _image_markers: List[List[Aruco]] = []
@@ -109,7 +109,7 @@ class Calibration:
         return f"camera_matrix={self.camera_matrix}\ndist_coeff={self.dist_coefficients}\n# marker_images={len(self._image_markers)}"
 
 
-def draw_markers(img: Frame, arucos: list[Aruco], calib: Calibration = None) -> Frame:
+def draw_markers(img: Frame, arucos: list[Aruco], calib: CameraCalibration = None) -> Frame:
     if len(arucos) > 0:
         corners = np.array([a.corners for a in arucos])
         ids = np.array([a.id for a in arucos])
@@ -124,7 +124,7 @@ def draw_markers(img: Frame, arucos: list[Aruco], calib: Calibration = None) -> 
     return img
 
 
-def detect_markers(image, detector: aruco.ArucoDetector, calib: Calibration) -> list[Aruco]:
+def detect_markers(image, detector: aruco.ArucoDetector, calib: CameraCalibration, marker_length_cm: float = DEFAULT_MARKER_LENGTH_CM) -> list[Aruco]:
     corners, ids, rejected_img_points = detector.detectMarkers(image)
     ids = ensure_cpu(ids)
     # if rejected_img_points is not None:
@@ -132,16 +132,16 @@ def detect_markers(image, detector: aruco.ArucoDetector, calib: Calibration) -> 
 
     if ids is not None:
         arucos = [Aruco(np.array(i[0]), c, None, None) for i, c in list(zip(ids, corners))]
-        return estimate_markers_poses(arucos, calib)
+        return estimate_markers_poses(arucos, calib, marker_length_cm)
     else:
         return []
 
 
-def estimate_markers_poses(arucos: List[Aruco], calib: Calibration):
+def estimate_markers_poses(arucos: List[Aruco], calib: CameraCalibration, marker_length_cm: float):
     corners = np.array([a.corners for a in arucos])
     # Estimate pose of each marker and return the values rotation_vector and translation_vector
     # (different from those of camera coefficients)
-    rotation_vectors, translation_vectors, marker_points = aruco.estimatePoseSingleMarkers(corners, 0.02,  # Assuming 1 pixel = 1 millimeter
+    rotation_vectors, translation_vectors, marker_points = aruco.estimatePoseSingleMarkers(corners, marker_length_cm,
                                                                                            calib.camera_matrix,
                                                                                            calib.dist_coefficients)
     if rotation_vectors is not None and translation_vectors is not None:
@@ -200,7 +200,7 @@ def calibrate_camera(camera_id=None, calibration_video_path=None, calibration_im
             img_list.append(img)
             # h, w, c = img.shape
         logger.debug(f'Calibrating {len(img_list)} images')
-        calib = Calibration(board)
+        calib = CameraCalibration(board)
         for idx, im in enumerate(tqdm(img_list)):
             logger.debug(f"Calibrating {idx} {fns[idx]}")
             img_gray = cv2.cvtColor(im, cv2.COLOR_RGB2GRAY)
@@ -214,7 +214,7 @@ def calibrate_camera(camera_id=None, calibration_video_path=None, calibration_im
             calib.store()
     # if camera_id given calibrate with live footage
     elif calibration_video_path is not None or camera_id is not None:
-        calib = Calibration(board).load()
+        calib = CameraCalibration(board).load()
         camera = cv2.VideoCapture(calibration_video_path if calibration_video_path is not None else camera_id)
         start = time.time()
         ret, img = camera.read()

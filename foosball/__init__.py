@@ -57,6 +57,7 @@ def get_argparse():
     ap.add_argument("-s", "--scale", type=float, default=0.4, help="Scale stream")
     ap.add_argument("-cap", "--capture", choices=['cv', 'gear'], default='gear', help="capture backend")
     ap.add_argument("-d", "--display", choices=['cv', 'gear'], default='cv', help="display backend cv=direct display, gear=stream")
+    ap.add_argument("-i", "--info", action='store_true', help="Render gui info box")
     ap.add_argument("-g", "--gpu", choices=['preprocess', 'tracker', 'render'], nargs='+', default=["render"],
                     help="use GPU")
     ap.add_argument("-A", "--audio", action='store_true', help="Enable audio")

@@ -108,6 +108,7 @@ class Renderer(BaseProcess):
         self.dims = dims
         self.headless = headless
         self.kwargs = kwargs
+        self.show_info = kwargs.get('info')
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
 
     def process(self, msg: Msg) -> Msg:
@@ -129,7 +130,8 @@ class Renderer(BaseProcess):
                     r_goal(f, goals.right)
                 r_track(f, track, self.dims.scale)
                 r_score(f, score, text_scale=1, thickness=4)
-                r_info(f, shape, info, text_scale=0.5, thickness=1)
+                if self.show_info:
+                    r_info(f, shape, info, text_scale=0.5, thickness=1)
                 return Msg(kwargs={"result": self.iproc(f)})
             else:
                 return Msg(kwargs={"result": " - ".join([f"{label}: {text}" for label, text in info])})

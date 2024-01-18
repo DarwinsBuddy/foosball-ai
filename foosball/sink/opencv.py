@@ -7,7 +7,7 @@ import yaml
 
 from . import Sink
 from foosball.tracking import BallConfig
-from foosball.models import rgb2hsv, hsv2rgb, GoalConfig
+from foosball.models import GoalConfig
 
 GOAL = "goal"
 BALL = "ball"
@@ -81,18 +81,15 @@ def add_config_input(calibration, config):
 
 
 def add_ball_config_input(bounds: BallConfig):
-    [lower_hsv, upper_hsv] = bounds.bounds_hsv
-    lower_rgb = hsv2rgb(lower_hsv)
-    upper_rgb = hsv2rgb(upper_hsv)
+    [lower_hsv, upper_hsv] = bounds.bounds
     cv2.createTrackbar(f'invert_frame', BALL, 1 if bounds.invert_frame else 0, 1, lambda v: None)
     cv2.createTrackbar(f'invert_mask', BALL, 1 if bounds.invert_mask else 0, 1, lambda v: None)
     # create trackbars for color change
-    cv2.createTrackbar(slider_label('R', 'low'), BALL, lower_rgb[0], 255, lambda v: None)
-    cv2.createTrackbar(slider_label('G', 'low'), BALL, lower_rgb[1], 255, lambda v: None)
-    cv2.createTrackbar(slider_label('B', 'low'), BALL, lower_rgb[2], 255, lambda v: None)
-    cv2.createTrackbar(slider_label('R', 'high'), BALL, upper_rgb[0], 255, lambda v: None)
-    cv2.createTrackbar(slider_label('G', 'high'), BALL, upper_rgb[1], 255, lambda v: None)
-    cv2.createTrackbar(slider_label('B', 'high'), BALL, upper_rgb[2], 255, lambda v: None)
+    cv2.createTrackbar('Hue', BALL, avg(lower_hsv[0], upper_hsv[0]), 179, lambda v: None)
+    cv2.createTrackbar(slider_label('S', 'low'), BALL, lower_hsv[1], 255, lambda v: None)
+    cv2.createTrackbar(slider_label('V', 'low'), BALL, lower_hsv[2], 255, lambda v: None)
+    cv2.createTrackbar(slider_label('S', 'high'), BALL, upper_hsv[1], 255, lambda v: None)
+    cv2.createTrackbar(slider_label('V', 'high'), BALL, upper_hsv[2], 255, lambda v: None)
     # cv2.createButton("Reset", reset_bounds, (name, lower_rgb, upper_rgb))
 
 
@@ -113,25 +110,25 @@ def reset_config(calibration, config):
         reset_ball_config(config)
 
 
+def avg(x, y):
+    return int((x + y) / 2)
+
 def reset_ball_config(bounds: BallConfig):
-    [lower_hsv, upper_hsv] = bounds.bounds_hsv
+    [lower_hsv, upper_hsv] = bounds.bounds
     print(f"Reset config {BALL}", end="\n\n\n")
-    lower_rgb = hsv2rgb(lower_hsv)
-    upper_rgb = hsv2rgb(upper_hsv)
 
     cv2.setTrackbarPos('invert_frame', BALL, 1 if bounds.invert_frame else 0)
     cv2.setTrackbarPos('invert_mask', BALL, 1 if bounds.invert_mask else 0)
 
-    cv2.setTrackbarPos(slider_label('R', 'low'), BALL, lower_rgb[0])
-    cv2.setTrackbarPos(slider_label('G', 'low'), BALL, lower_rgb[1])
-    cv2.setTrackbarPos(slider_label('B', 'low'), BALL, lower_rgb[2])
-    cv2.setTrackbarPos(slider_label('R', 'high'), BALL, upper_rgb[0])
-    cv2.setTrackbarPos(slider_label('G', 'high'), BALL, upper_rgb[1])
-    cv2.setTrackbarPos(slider_label('B', 'high'), BALL, upper_rgb[2])
+    cv2.setTrackbarPos('Hue', BALL, avg(lower_hsv[0], upper_hsv[0]))
+    cv2.setTrackbarPos(slider_label('S', 'low'), BALL, lower_hsv[1])
+    cv2.setTrackbarPos(slider_label('V', 'low'), BALL, lower_hsv[2])
+    cv2.setTrackbarPos(slider_label('S', 'high'), BALL, upper_hsv[1])
+    cv2.setTrackbarPos(slider_label('V', 'high'), BALL, upper_hsv[2])
 
 
 def reset_goal_config(config: GoalConfig):
-    [lower, upper] = config.bounds_hsv
+    [lower, upper] = config.bounds
     print(f"Reset config {GOAL}", end="\n\n\n")
 
     cv2.setTrackbarPos('invert_frame', GOAL, 1 if config.invert_frame else 0)
@@ -143,14 +140,12 @@ def reset_goal_config(config: GoalConfig):
 
 def store_ball_config(config: BallConfig):
     filename = f"ball.yaml"
-    [lower_hsv, upper_hsv] = config.bounds_hsv
+    [lower, upper] = config.bounds
     print(f"Store config {filename}" + (" " * 50), end="\n\n")
-    lower_rgb = hsv2rgb(lower_hsv)
-    upper_rgb = hsv2rgb(upper_hsv)
     with open(filename, "w") as f:
         yaml.dump({
-            "lower_rgb": lower_rgb.tolist(),
-            "upper_rgb": upper_rgb.tolist(),
+            "lower": lower.tolist(),
+            "upper": upper.tolist(),
             "invert_frame": config.invert_frame,
             "invert_mask": config.invert_mask
         }, f)
@@ -176,22 +171,27 @@ def get_slider_config(calibration):
         return get_slider_ball_config()
 
 
+def int2bool(x: int) -> bool:
+    return True if x == 1 else False
+
+
 def get_slider_ball_config():
     # get current positions of four trackbars
     invert_frame = cv2.getTrackbarPos('invert_frame', BALL)
     invert_mask = cv2.getTrackbarPos('invert_mask', BALL)
 
-    rl = cv2.getTrackbarPos(slider_label('R', 'low'), BALL)
-    rh = cv2.getTrackbarPos(slider_label('R', 'high'), BALL)
+    hue = cv2.getTrackbarPos('Hue', BALL)
+    hl = max(0, hue - 10)
+    hh = min(179, hue + 10)
 
-    gl = cv2.getTrackbarPos(slider_label('G', 'low'), BALL)
-    gh = cv2.getTrackbarPos(slider_label('G', 'high'), BALL)
+    sl = cv2.getTrackbarPos(slider_label('S', 'low'), BALL)
+    sh = cv2.getTrackbarPos(slider_label('S', 'high'), BALL)
 
-    bl = cv2.getTrackbarPos(slider_label('B', 'low'), BALL)
-    bh = cv2.getTrackbarPos(slider_label('B', 'high'), BALL)
-    lower = rgb2hsv(np.array([rl, gl, bl]))
-    upper = rgb2hsv(np.array([rh, gh, bh]))
-    return BallConfig(bounds_hsv=[lower, upper], invert_mask=invert_mask, invert_frame=invert_frame)
+    vl = cv2.getTrackbarPos(slider_label('V', 'low'), BALL)
+    vh = cv2.getTrackbarPos(slider_label('V', 'high'), BALL)
+    lower = np.array([hl, sl, vl])
+    upper = np.array([hh, sh, vh])
+    return BallConfig(bounds=[lower, upper], invert_mask=int2bool(invert_mask), invert_frame=int2bool(invert_frame))
 
 
 def get_slider_goals_config():
@@ -202,4 +202,4 @@ def get_slider_goals_config():
     lower = cv2.getTrackbarPos('lower', GOAL)
     upper = cv2.getTrackbarPos('upper', GOAL)
 
-    return GoalConfig(bounds=[lower, upper], invert_mask=invert_mask, invert_frame=invert_frame)
+    return GoalConfig(bounds=[lower, upper], invert_mask=int2bool(invert_mask), invert_frame=int2bool(invert_frame))

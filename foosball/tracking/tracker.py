@@ -57,9 +57,9 @@ class Tracker(BaseProcess):
             ("Tracker", f"{'off' if self.off else 'on'}")
         ]
         if self.ball_calibration:
-            [lower_rgb, upper_rgb] = self.calibration_bounds().bounds("rgb")
-            info.append((f"lower", f'({",".join(map(str,lower_rgb))})'))
-            info.append((f"upper", f'({",".join(map(str,upper_rgb))})'))
+            [lower, upper] = self.calibration_bounds().bounds
+            info.append((f"lower", f'({",".join(map(str,lower))})'))
+            info.append((f"upper", f'({",".join(map(str,upper))})'))
             info.append((f"invert frame", f'{self.calibration_bounds().invert_frame}'))
             info.append((f"invert mask", f'{self.calibration_bounds().invert_mask}'))
         return info

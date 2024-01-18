@@ -164,7 +164,7 @@ class AI:
         # see if some sliders changed
         if self.calibration in ["goal", "ball"]:
             new_config = get_slider_config(self.calibration)
-            if new_config.to_dict() != self.calibration_config().to_dict():
+            if new_config != self.calibration_config():
                 self.set_calibration_config(new_config)
                 self.tracking.config_input(self.calibration_config())
 

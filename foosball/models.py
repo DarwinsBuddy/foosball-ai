@@ -99,15 +99,9 @@ class GoalsDetectionResult:
 
 @dataclass
 class BallConfig:
-    bounds_hsv: [HSV, HSV]
+    bounds: [HSV, HSV]
     invert_frame: bool = False
     invert_mask: bool = False
-
-    def bounds(self, mode="hsv"):
-        if mode == "hsv":
-            return self.bounds_hsv
-        else:
-            return [hsv2rgb(x) for x in self.bounds_hsv]
 
     def store(self):
         filename = f"ball.yaml"
@@ -121,14 +115,23 @@ class BallConfig:
             logging.info("Loading ball config ball.yaml")
             with open(filename, 'r') as f:
                 c = yaml.safe_load(f)
-                return BallConfig(invert_frame=c['invert_frame'], invert_mask=c['invert_mask'], bounds_hsv=np.array(c['bounds_hsv']))
+                return BallConfig(invert_frame=c['invert_frame'], invert_mask=c['invert_mask'], bounds=np.array(c['bounds']))
         else:
             logging.info("No ball config found")
         return None
 
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, BallConfig):
+            return (all([a == b for a, b in zip(self.bounds[0], other.bounds[0])]) and
+                    all([a == b for a, b in zip(self.bounds[1], other.bounds[1])]) and
+                    self.invert_mask == other.invert_mask and
+                    self.invert_frame == other.invert_frame)
+        return False
+
     def to_dict(self):
         return {
-            "bounds_hsv": [x.tolist() for x in self.bounds_hsv],
+            "bounds": [x.tolist() for x in self.bounds],
             "invert_frame": self.invert_frame,
             "invert_mask": self.invert_mask
         }
@@ -142,7 +145,6 @@ class GoalConfig:
 
     def store(self):
         filename = f"goal.yaml"
-        [lower, upper] = self.bounds
         print(f"Store config {filename}" + (" " * 50), end="\n\n")
         with open(filename, "w") as f:
             yaml.dump(self.to_dict(), f)
@@ -152,6 +154,14 @@ class GoalConfig:
         with open(filename, 'r') as f:
             c = yaml.safe_load(f)
             return GoalConfig(**c)
+
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, GoalConfig):
+            return (all([a == b for a, b in zip(self.bounds, other.bounds)]) and
+                    self.invert_mask == other.invert_mask and
+                    self.invert_frame == other.invert_frame)
+        return False
 
     def to_dict(self):
         return {

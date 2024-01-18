@@ -30,7 +30,7 @@ def detect_goals(frame, config: GoalConfig) -> GoalsDetectionResult:
 
 
 def filter_color_range(frame, bounds: BallConfig) -> Frame:
-    [lower, upper] = bounds.bounds("hsv")
+    [lower, upper] = bounds.bounds
     f = frame if not bounds.invert_frame else cv2.bitwise_not(frame)
 
     blurred = cv2.GaussianBlur(f, (1, 1), 0)

@@ -1,8 +1,8 @@
-bounds_hsv:
-- - 6
-  - 122
-  - 140
-- - 71
+bounds:
+- - 17
+  - 37
+  - 25
+- - 37
   - 255
   - 255
 invert_frame: false

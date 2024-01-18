@@ -22,14 +22,14 @@ def yellow_ball() -> BallConfig:
     lower = rgb2hsv(np.array([140, 86, 73]))
     upper = rgb2hsv(np.array([0, 255, 94]))
 
-    return BallConfig(bounds_hsv=[lower, upper], invert_frame=False, invert_mask=False)
+    return BallConfig(bounds=[lower, upper], invert_frame=False, invert_mask=False)
 
 
 def orange_ball() -> BallConfig:
     lower = rgb2hsv(np.array([166, 94, 72]))
     upper = rgb2hsv(np.array([0, 249, 199]))
 
-    return BallConfig(bounds_hsv=[lower, upper], invert_frame=False, invert_mask=False)
+    return BallConfig(bounds=[lower, upper], invert_frame=False, invert_mask=False)
 
 
 def get_goal_config() -> GoalConfig:

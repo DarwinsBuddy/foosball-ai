@@ -63,7 +63,7 @@ def generate_frame_mask(width, height) -> Mask:
 
 class Tracking:
 
-    def __init__(self, stream, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, headless=False, **kwargs):
+    def __init__(self, stream, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, headless=False, maxPipeSize=128, **kwargs):
         super().__init__()
         self.calibration = kwargs.get('calibration')
         self.dims = dims
@@ -76,7 +76,7 @@ class Tracking:
         self.renderer = Renderer(dims, headless=headless, useGPU=kwargs.get('render-gpu'), **kwargs)
 
         self.stream = stream
-        self.pipe = Pipe(stream, [self.preprocessor, self.tracker, self.analyzer, self.renderer])
+        self.pipe = Pipe(stream, [self.preprocessor, self.tracker, self.analyzer, self.renderer], maxsize=maxPipeSize)
         self.frame_queue = self.pipe.input
 
     def start(self):

@@ -49,6 +49,13 @@ class AI:
 
         self.fps = FPS()
 
+    def set_calibration_config(self, config: dict):
+        if self.calibration is not None:
+            if self.calibration == 'ball':
+                self.ball_config = config
+            else:
+                self.goals_config = config
+
     def stop(self):
         self._stopped = True
 
@@ -65,6 +72,8 @@ class AI:
         def store_calibration():
             if self.calibration is not None:
                 self.calibration_config().store()
+            else:
+                logging.info("calibration not found. config not stored")
             return False
 
         def pause():
@@ -154,7 +163,10 @@ class AI:
     def adjust_calibration(self):
         # see if some sliders changed
         if self.calibration in ["goal", "ball"]:
-            self.tracking.config_input(get_slider_config(self.calibration))
+            new_config = get_slider_config(self.calibration)
+            if new_config.to_dict() != self.calibration_config().to_dict():
+                self.set_calibration_config(new_config)
+                self.tracking.config_input(self.calibration_config())
 
     @staticmethod
     def scale_dim(dim, scale_percent):

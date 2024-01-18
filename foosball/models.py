@@ -1,4 +1,5 @@
 import collections
+import logging
 import os
 from dataclasses import dataclass
 from enum import Enum
@@ -112,19 +113,25 @@ class BallConfig:
         filename = f"ball.yaml"
         print(f"Store config {filename}" + (" " * 50), end="\n\n")
         with open(filename, "w") as f:
-            yaml.dump({
-                "bounds_hsv": [x.tolist() for x in self.bounds_hsv],
-                "invert_frame": self.invert_frame,
-                "invert_mask": self.invert_mask
-            }, f)
+            yaml.dump(self.to_dict(), f)
 
     @staticmethod
     def load(filename='ball.yaml'):
         if os.path.isfile(filename):
+            logging.info("Loading ball config ball.yaml")
             with open(filename, 'r') as f:
                 c = yaml.safe_load(f)
                 return BallConfig(invert_frame=c['invert_frame'], invert_mask=c['invert_mask'], bounds_hsv=np.array(c['bounds_hsv']))
+        else:
+            logging.info("No ball config found")
         return None
+
+    def to_dict(self):
+        return {
+            "bounds_hsv": [x.tolist() for x in self.bounds_hsv],
+            "invert_frame": self.invert_frame,
+            "invert_mask": self.invert_mask
+        }
 
 
 @dataclass
@@ -138,11 +145,7 @@ class GoalConfig:
         [lower, upper] = self.bounds
         print(f"Store config {filename}" + (" " * 50), end="\n\n")
         with open(filename, "w") as f:
-            yaml.dump({
-                "bounds": self.bounds,
-                "invert_frame": self.invert_frame,
-                "invert_mask": self.invert_mask
-            }, f)
+            yaml.dump(self.to_dict(), f)
 
     @staticmethod
     def load(filename='goal.yaml'):
@@ -150,6 +153,12 @@ class GoalConfig:
             c = yaml.safe_load(f)
             return GoalConfig(**c)
 
+    def to_dict(self):
+        return {
+            "bounds": self.bounds,
+            "invert_frame": self.invert_frame,
+            "invert_mask": self.invert_mask
+        }
 
 Track = collections.deque
 Info = list[tuple[str, str]]

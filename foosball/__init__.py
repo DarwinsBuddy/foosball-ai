@@ -45,9 +45,11 @@ def get_argparse():
                          "If no file present fallback to 'yellow'")
     ap.add_argument("-v", "--verbose", action='store_true', help="Verbose")
     ap.add_argument("-o", "--off", action='store_true', help="Disable ai")
+    ap.add_argument("-fps", "--framerate", type=int, help="Framerate for camera src", default=60)
     ap.add_argument("-out", "--output", default=None, help="path to store (optional) a rendered video")
     ap.add_argument("-q", "--headless", action='store_true', help="Disable visualizations")
     ap.add_argument("-b", "--buffer", type=int, default=16, help="max track buffer size")
+    ap.add_argument("-p", "--maxPipeSize", type=int, default=128, help="max pipe buffer size")
     ap.add_argument("-xp", "--xpad", type=int, default=50,
                     help="Horizontal padding applied to ROI detected by aruco markers")
     ap.add_argument("-yp", "--ypad", type=int, default=20,
@@ -93,7 +95,7 @@ def main(kwargs):
         source = kwargs.get('file') or kwargs.get('cameraId')
         if kwargs.get('capture') == 'gear':
             from .source.gear import GearSource
-            cap = GearSource(source, framerate=32, resolution=(1280, 720))
+            cap = GearSource(source, framerate=kwargs.get('framerate'), resolution=(1280, 720))
         elif kwargs.get('capture') == 'cv':
             from .source.opencv import OpenCVSource
             cap = OpenCVSource(source)

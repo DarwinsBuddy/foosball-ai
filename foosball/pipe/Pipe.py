@@ -57,6 +57,9 @@ class Pipe:
     def qsizes(self):
         return [q.qsize() for q in self.queues]
 
+    def status(self) -> str:
+        return f"Queue sizes: {' '.join([str(s) for s in self.qsizes])}"
+
     def stop(self):
         self.logger.debug("Stopping pipe...")
         self.stream.stop()
@@ -64,7 +67,7 @@ class Pipe:
             p.stop()
         # empty the last queue
 
-        self.logger.debug(f"Queue sizes: {' '.join([str(s) for s in self.qsizes])}")
+        logging.debug(self.status())
         self.logger.debug("draining queues...")
         # draining all queues for good
         for q in self.queues:
@@ -72,5 +75,5 @@ class Pipe:
         self.logger.debug("joining...")
         for p in reversed(self.processes):
             p.join()
-        self.logger.debug(f"Queue sizes: {' '.join([str(s) for s in self.qsizes])}")
+        logging.debug(self.status())
         self.logger.debug("Stopped  pipe")

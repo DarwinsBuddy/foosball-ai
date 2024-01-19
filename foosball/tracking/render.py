@@ -4,7 +4,7 @@ import traceback
 import cv2
 import numpy as np
 
-from ..models import Info, Goal, Score, FrameDimensions, Blob
+from ..models import Goal, Score, FrameDimensions, Blob, InfoLog
 from ..pipe.BaseProcess import Msg, BaseProcess
 from ..utils import generate_processor_switches
 logger = logging.getLogger(__name__)
@@ -31,25 +31,25 @@ def text_color(key, value):
         return GREEN
 
 
-def r_info(frame, shape: tuple[int, int, int], info: Info, text_scale=1.0, thickness=1.0) -> None:
+def r_info(frame, shape: tuple[int, int, int], info: InfoLog, text_scale=1.0, thickness=1) -> None:
     [height, width, channels] = shape
     # loop over the info tuples and draw them on our frame
     x = 0
     y = height
     h = 0
     w = 0
-    for (key, value) in info:
-        text = "{}: {}".format(key, value)
+    for i in info:
+        text = i.to_string()
         if w + x > width:
             cv2.rectangle(frame, (x, y), (width, y - h), BLACK, -1) # fill
             x = 0
             y = y - h
-        [x0, _, w, h] = r_text(frame, text, x, y, text_color(text, value), text_scale=text_scale, thickness=thickness, background=BLACK, padding=(20, 20), ground_zero='bl')
+        [x0, _, w, h] = r_text(frame, text, x, y, text_color(text, i.value), text_scale=text_scale, thickness=thickness, background=BLACK, padding=(20, 20), ground_zero='bl')
         x = x0 + w
     cv2.rectangle(frame, (x, y), (width, y - h), BLACK, -1)  # fill
 
 
-def r_text(frame, text: str, x: int, y: int, color=GREEN, text_scale=1.0, thickness=1.0, background=None, padding=(0, 0), ground_zero='bl'):
+def r_text(frame, text: str, x: int, y: int, color=GREEN, text_scale=1.0, thickness=1, background=None, padding=(0, 0), ground_zero='bl'):
     horizontal = ground_zero[1]
     vertical = ground_zero[0]
     [text_width, text_height] = cv2.getTextSize(text, FONT, text_scale, thickness)[0]
@@ -68,8 +68,7 @@ def r_text(frame, text: str, x: int, y: int, color=GREEN, text_scale=1.0, thickn
 
 
 def r_score(frame, score: Score, text_scale=1, thickness=1) -> None:
-    text = f"{score.blue} : {score.red}"
-    r_text(frame, text,  0, 0, GREEN, background=BLACK, padding=(5, 20), text_scale=text_scale, thickness=thickness, ground_zero='tl')
+    r_text(frame, score.to_string(),  0, 0, GREEN, background=BLACK, padding=(5, 20), text_scale=text_scale, thickness=thickness, ground_zero='tl')
 
 
 def r_ball(frame, b: Blob) -> None:
@@ -103,17 +102,17 @@ class Renderer(BaseProcess):
     def close(self):
         pass
 
-    def __init__(self, dims: FrameDimensions, headless=False, useGPU: bool = False, *args, **kwargs):
+    def __init__(self, dims: FrameDimensions, headless=False, useGPU: bool = False, info_verbosity=None, *args, **kwargs):
         super().__init__(name="Renderer")
         self.dims = dims
         self.headless = headless
+        self.info_verbosity = info_verbosity
         self.kwargs = kwargs
-        self.show_info = kwargs.get('info')
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
 
     def process(self, msg: Msg) -> Msg:
         analyze_result = msg.kwargs['result']
-        info = analyze_result.info
+        info: InfoLog = analyze_result.info
         try:
             if not self.headless:
                 shape = analyze_result.frame.shape
@@ -130,11 +129,11 @@ class Renderer(BaseProcess):
                     r_goal(f, goals.right)
                 r_track(f, track, self.dims.scale)
                 r_score(f, score, text_scale=1, thickness=4)
-                if self.show_info:
-                    r_info(f, shape, info, text_scale=0.5, thickness=1)
-                return Msg(kwargs={"result": self.iproc(f)})
+                if self.info_verbosity is not None:
+                    r_info(f, shape, info.filter(self.info_verbosity), text_scale=0.5, thickness=1)
+                return Msg(kwargs={"result": self.iproc(f), 'info': info})
             else:
-                return Msg(kwargs={"result": " - ".join([f"{label}: {text}" for label, text in info])})
+                return Msg(kwargs={"result": None, 'info': info})
 
         except Exception as e:
             logger.error(f"Error in renderer {e}")

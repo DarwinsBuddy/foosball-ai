@@ -8,7 +8,8 @@ import numpy as np
 
 from .colordetection import detect_goals
 from ..arUcos import calibration, Aruco
-from ..models import Frame, PreprocessResult, Point, Rect, GoalConfig, Blob, Goals, FrameDimensions, ScaleDirection
+from ..models import Frame, PreprocessResult, Point, Rect, GoalConfig, Blob, Goals, FrameDimensions, ScaleDirection, \
+    InfoLog, Info
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..pipe.Pipe import clear
 from ..utils import ensure_cpu, generate_processor_switches, relative_change, scale
@@ -92,7 +93,7 @@ class PreProcessor(BaseProcess):
         frame = self.proc(frame)
         frame = scale(frame, self.dims, ScaleDirection.DOWN)
         preprocessed = frame
-        info = []
+        info: InfoLog = InfoLog(infos=[])
         try:
             if self.goals_calibration:
                 try:
@@ -101,17 +102,19 @@ class PreProcessor(BaseProcess):
                     pass
 
             trigger_marker_detection = self.frames_since_last_marker_detection == 0 or len(self.markers) == 0
-            info = [(f'{"? " if trigger_marker_detection else ""}Markers', f'{len(self.markers)}'.ljust(10, ' '))]
+            goal_info = None
+            marker_info = Info(verbosity=0, title=f'{"? " if trigger_marker_detection else ""}Markers', value=f'{len(self.markers)}'.ljust(10, ' '))
             if not self.kwargs.get('off'):
                 if trigger_marker_detection:
                     # detect markers
                     markers = self.detect_markers(frame)
                     # check if there are exactly 4 markers present
                     markers = [m for m in markers if m.id in self.used_markers]
-                    info = [(f'{"! " if len(markers) != 4 else ""}Markers', f'{len(markers)}'.ljust(10, ' '))]
+                    marker_info = Info(verbosity=0, title=f'{"! " if len(markers) != 4 else ""}Markers', value=f'{len(markers)}'.ljust(10, ' '))
                     # logging.debug(f"markers {[list(m.id)[0] for m in markers]}")
                     if len(markers) == 4:
                         self.markers = markers
+
                 self.frames_since_last_marker_detection = (self.frames_since_last_marker_detection + 1) % self.redetect_markers_frame_threshold
                 if len(self.markers) == 4:
                     # crop and warp
@@ -133,10 +136,13 @@ class PreProcessor(BaseProcess):
                                 right=self.goals.right if abs(right_change) < self.goal_change_threshold else new_goals.right
                             )
                         # TODO: distinguish between red or blue goal (instead of left and right)
-                    info.append(['goals', f'{"detected" if self.goals is not None else "fail"}'])
+                    goal_info = Info(verbosity=1, title='goals', value=f'{"detected" if self.goals is not None else "fail"}')
                 else:
-                    info.append(['goals', 'none'.rjust(8, ' ')])
+                    goal_info = Info(verbosity=1, title='goals', value='none'.rjust(8, ' '))
                     preprocessed = self.mask_frame(frame)
+            info.append(marker_info)
+            if goal_info is not None:
+                info.append(goal_info)
         except Exception as e:
             self.logger.error(f"Error in preprocess {e}")
             traceback.print_exc()

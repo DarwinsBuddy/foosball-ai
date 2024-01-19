@@ -58,6 +58,8 @@ class Score:
         elif team == Team.RED:
             self.red += 1
 
+    def to_string(self):
+        return f"{self.blue} : {self.red}"
 
 @dataclass
 class FrameDimensions:
@@ -115,7 +117,8 @@ class BallConfig:
             logging.info("Loading ball config ball.yaml")
             with open(filename, 'r') as f:
                 c = yaml.safe_load(f)
-                return BallConfig(invert_frame=c['invert_frame'], invert_mask=c['invert_mask'], bounds=np.array(c['bounds']))
+                return BallConfig(invert_frame=c['invert_frame'], invert_mask=c['invert_mask'],
+                                  bounds=np.array(c['bounds']))
         else:
             logging.info("No ball config found")
         return None
@@ -170,8 +173,38 @@ class GoalConfig:
             "invert_mask": self.invert_mask
         }
 
+
 Track = collections.deque
-Info = list[tuple[str, str]]
+
+
+@dataclass
+class Info:
+    verbosity: int
+    title: str
+    value: str
+
+    def to_string(self) -> str:
+        return f'{self.title} {self.value}'
+
+
+@dataclass
+class InfoLog:
+    infos: [Info]
+
+    def __iter__(self):
+        return (i for i in self.infos)
+
+    def append(self, info: Info):
+        self.infos.append(info)
+
+    def concat(self, info_log):
+        self.infos = self.infos + info_log.infos
+
+    def filter(self, info_verbosity=0):
+        return InfoLog(infos=[i for i in self.infos if info_verbosity <= i.verbosity])
+
+    def to_string(self):
+        return " - ".join([i.to_string() for i in self.infos])
 
 
 @dataclass

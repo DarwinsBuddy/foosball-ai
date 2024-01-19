@@ -9,7 +9,7 @@ from . import Tracking, get_ball_config, get_goal_config
 from .render import r_text, BLACK
 from ..source import Source
 from ..sink.opencv import DisplaySink, get_slider_config, add_config_input, reset_config, Key
-from ..models import FrameDimensions, Frame
+from ..models import FrameDimensions, Frame, InfoLog
 
 BLANKS = (' ' * 80)
 
@@ -28,6 +28,7 @@ class AI:
         self._stopped = False
         self.ball_config = get_ball_config(self.kwargs.get('ball'))
         self.goals_config = get_goal_config()
+        self.info_verbosity = kwargs.get('info_verbosity')
 
         self.output = None if kwargs.get('output') is None else WriteGear(kwargs.get('output'), logging=True)
 
@@ -112,20 +113,21 @@ class AI:
                         self.logger.debug("received SENTINEL")
                         break
                     self.fps.update()
-                    f = msg.kwargs['result']
+                    frame = msg.kwargs['result']
+                    info: InfoLog = msg.kwargs['info']
                     self.fps.stop()
                     fps = int(self.fps.fps())
                     if not self.headless:
-                        self.render_fps(f, fps)
-                        self.sink.show(f)
+                        self.render_fps(frame, fps)
+                        self.sink.show(frame)
                         if self.output is not None:
-                            self.output.write(f)
+                            self.output.write(frame)
                         if self.calibration is not None:
                             self.render_calibration()
                         if self.sink.render(callbacks=callbacks):
                             break
                     else:
-                        print(f"{f} - FPS: {fps} {BLANKS}", end="\r")
+                        print(f"{info.filter(self.info_verbosity).to_string() if self.info_verbosity is not None else ''} - FPS: {fps} {BLANKS}", end="\r")
                 except Empty:
                     # logger.debug("No new frame")
                     pass

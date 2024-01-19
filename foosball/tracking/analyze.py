@@ -1,11 +1,10 @@
-import logging
 import multiprocessing
 import traceback
 from typing import Optional
 
 from .. import hooks
-from ..hooks import Webhook, generate_goal_webhook
-from ..models import Team, Goals, Score, AnalyzeResult, Track
+from ..hooks import generate_goal_webhook
+from ..models import Team, Goals, Score, AnalyzeResult, Track, Info
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..utils import contains
 
@@ -62,6 +61,7 @@ class Analyzer(BaseProcess):
             self.logger.error("Error in analyzer ", e)
             traceback.print_exc()
         self.last_track = track
+        info.append(Info(verbosity=2, title="Score", value=self.score.to_string()))
         return Msg(kwargs={"result": AnalyzeResult(score=self.score, ball=ball, goals=goals, frame=frame, info=info,
                                                    ball_track=track)})
 

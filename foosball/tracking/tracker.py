@@ -5,7 +5,7 @@ from queue import Empty
 
 from .colordetection import detect_ball
 from .preprocess import WarpMode, project_blob
-from ..models import TrackResult, Track, BallConfig, Info, Blob, Goals
+from ..models import TrackResult, Track, BallConfig, Info, Blob, Goals, InfoLog
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..pipe.Pipe import clear
 from ..utils import generate_processor_switches
@@ -50,18 +50,18 @@ class Tracker(BaseProcess):
             self.ball_track.appendleft(None)
         return self.ball_track
 
-    def get_info(self, ball_track: Track) -> Info:
-        info = [
-            ("Track length", f"{str(sum([1 for p in ball_track or [] if p is not None])).rjust(2, ' ')}"),
-            ("Calibration", f"{self.calibration if self.calibration is not None else 'off'}"),
-            ("Tracker", f"{'off' if self.off else 'on'}")
-        ]
+    def get_info(self, ball_track: Track) -> InfoLog:
+        info = InfoLog(infos=[
+            Info(verbosity=1, title="Track length", value=f"{str(sum([1 for p in ball_track or [] if p is not None])).rjust(2, ' ')}"),
+            Info(verbosity=0, title="Calibration", value=f"{self.calibration if self.calibration is not None else 'off'}"),
+            Info(verbosity=0, title="Tracker", value=f"{'off' if self.off else 'on'}")
+        ])
         if self.ball_calibration:
             [lower, upper] = self.calibration_bounds().bounds
-            info.append((f"lower", f'({",".join(map(str,lower))})'))
-            info.append((f"upper", f'({",".join(map(str,upper))})'))
-            info.append((f"invert frame", f'{self.calibration_bounds().invert_frame}'))
-            info.append((f"invert mask", f'{self.calibration_bounds().invert_mask}'))
+            info.append(Info(verbosity=0, title=f"lower", value=f'({",".join(map(str,lower))})'))
+            info.append(Info(verbosity=0, title=f"upper", value=f'({",".join(map(str,upper))})'))
+            info.append(Info(verbosity=0, title=f"invert frame", value=f'{self.calibration_bounds().invert_frame}'))
+            info.append(Info(verbosity=0, title=f"invert mask", value=f'{self.calibration_bounds().invert_mask}'))
         return info
 
     @property
@@ -77,7 +77,7 @@ class Tracker(BaseProcess):
         ball = None
         goals = preprocess_result.goals
         ball_track = None
-        info = []
+        info = None
         try:
             if not self.off:
                 if self.ball_calibration:
@@ -101,7 +101,8 @@ class Tracker(BaseProcess):
                     self.calibration_out.put_nowait(self.iproc(ball_detection_result.frame))
                     # copy deque, since we otherwise run into odd tracks displayed
                 ball_track = self.update_ball_track(ball).copy()
-            info = preprocess_result.info + self.get_info(ball_track)
+            info = preprocess_result.info
+            info.concat(self.get_info(ball_track))
         except Exception as e:
             logger.error(f"Error in track {e}")
             traceback.print_exc()

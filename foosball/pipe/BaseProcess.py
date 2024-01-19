@@ -21,6 +21,7 @@ class Msg:
         self.kwargs = kwargs
         self.args = args
 
+
 class BaseProcess(multiprocessing.Process):
     def __init__(self, send_receive_timeout=0.5, *args, **kwargs):
         super().__init__(daemon=True, *args, **kwargs)
@@ -32,6 +33,8 @@ class BaseProcess(multiprocessing.Process):
         self.playing: multiprocessing.Event = multiprocessing.Event()
         self.playing.set()
         self.send_receive_timeout = send_receive_timeout
+        self.inq = None
+        self.outq = None
 
     def set_input(self, inq):
         self.inq = inq
@@ -91,7 +94,7 @@ class BaseProcess(multiprocessing.Process):
     def run(self):
         assert self.inq is not None
         assert self.outq is not None
-        self.logger.debug(f"Starting {self._name}")
+        self.logger.debug(f"Starting {self.name}")
         while not self.stopped.is_set():
             try:
                 if self.playing.is_set() or self.next_step.is_set():
@@ -110,9 +113,9 @@ class BaseProcess(multiprocessing.Process):
             except Empty:
                 pass
             except Exception as e:
-                self.logger.error(f"Error in {self._name} - {e}")
+                self.logger.error(f"Error in {self.name} - {e}")
                 traceback.print_exc()
-        self.logger.debug(f"Stopping {self._name}...")
+        self.logger.debug(f"Stopping {self.name}...")
         clear(self.inq)
         self.close()
-        self.logger.debug(f"Stopped  {self._name}")
+        self.logger.debug(f"Stopped  {self.name}")

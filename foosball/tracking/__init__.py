@@ -9,8 +9,7 @@ from .analyze import Analyzer
 from .preprocess import PreProcessor
 from .render import Renderer
 from .tracker import Tracker
-from ..models import Mask, FrameDimensions, BallConfig, rgb2hsv, GoalConfig, Frame
-from ..pipe.BaseProcess import Msg
+from ..models import Mask, FrameDimensions, BallConfig, rgb2hsv, GoalConfig
 from ..pipe.Pipe import Pipe
 
 
@@ -97,6 +96,9 @@ class Tracking:
     @property
     def output(self) -> Queue:
         return self.pipe.output
+
+    def status(self) -> str:
+        return self.pipe.status()
 
     @property
     def calibration_output(self) -> Queue:

@@ -55,7 +55,7 @@ class Calibration:
         for markers in filtered_img_markers:
             corners = np.array([m.corners for m in markers])
             ids = np.array([[m.id] for m in markers])
-            print(corners_list, corners.shape)
+            # print(corners_list, corners.shape)
             corners_list = corners if len(corners_list) == 0 else np.vstack((corners_list, corners))
             id_list = ids if len(id_list) == 0 else np.vstack((id_list, ids))
             counter.append(len(markers))

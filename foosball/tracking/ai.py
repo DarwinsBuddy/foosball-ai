@@ -5,12 +5,13 @@ from queue import Empty
 from imutils.video import FPS
 from vidgear.gears import WriteGear
 
-from const import HEADLESS, CALIBRATION_MODE, BALL, INFO_VERBOSITY, OUTPUT, CalibrationMode, SCALE
-from . import Tracking, get_ball_config, get_goal_config
+from const import HEADLESS, CALIBRATION_MODE, INFO_VERBOSITY, OUTPUT, CalibrationMode, SCALE, BALL
+from . import Tracking
 from .render import r_text, BLACK
+from ..detectors.color import GoalColorConfig, BallColorDetector, BallColorConfig, GoalColorDetector
+from ..models import FrameDimensions, Frame, InfoLog, Verbosity
+from ..sink.opencv import DisplaySink, Key, BallColorCalibration, GoalColorCalibration, CalibrationConfig
 from ..source import Source
-from ..sink.opencv import DisplaySink, get_slider_config, add_config_input, reset_config, Key
-from ..models import FrameDimensions, Frame, InfoLog
 
 BLANKS = (' ' * 80)
 
@@ -26,18 +27,9 @@ class AI:
         self.paused = False
         self.calibrationMode = kwargs.get(CALIBRATION_MODE)
         self._stopped = False
-        self.ball_config = get_ball_config(kwargs.get(BALL))
-        self.goals_config = get_goal_config()
-        self.info_verbosity = kwargs.get(INFO_VERBOSITY)
+        self.infoVerbosity = Verbosity(kwargs.get(INFO_VERBOSITY)) if kwargs.get(INFO_VERBOSITY) else None
 
         self.output = None if kwargs.get(OUTPUT) is None else WriteGear(kwargs.get(OUTPUT), logging=True)
-
-        if self.calibrationMode is not None:
-            match self.calibrationMode:
-                case CalibrationMode.BALL:
-                    self.calibration_config = lambda: self.ball_config
-                case CalibrationMode.GOAL:
-                    self.calibration_config = lambda: self.goals_config
         self.detection_frame = None
 
         original = self.source.dim()
@@ -45,29 +37,29 @@ class AI:
         scaled = self.scale_dim(original, self.scale)
         self.dims = FrameDimensions(original, scaled, self.scale)
 
-        self.tracking = Tracking(self.source, self.dims, self.ball_config, self.goals_config, **kwargs)
+        self.goal_detector = GoalColorDetector(GoalColorConfig.preset())
+        self.ball_detector = BallColorDetector(BallColorConfig.preset(kwargs.get(BALL)))
 
+        self.tracking = Tracking(self.source, self.dims, self.goal_detector, self.ball_detector, **kwargs)
         if not self.headless and self.calibrationMode is not None:
+            # init calibration window
             self.calibration_display = DisplaySink(self.calibrationMode, pos='br')
-            # init slider window
-            add_config_input(self.calibrationMode, self.calibration_config())
+        match self.calibrationMode:
+            case CalibrationMode.BALL:
+                self.calibration = BallColorCalibration(self.ball_detector.config)
+            case CalibrationMode.GOAL:
+                self.calibration = GoalColorCalibration(self.goal_detector.config)
+            case _:
+                self.calibration = None
 
         self.fps = FPS()
-
-    def set_calibration_config(self, config: dict):
-        if self.calibrationMode is not None:
-            if self.calibrationMode == 'ball':
-                self.ball_config = config
-            else:
-                self.goals_config = config
 
     def stop(self):
         self._stopped = True
 
     def process_video(self):
         def reset_calibration():
-            if self.calibrationMode is not None:
-                reset_config(self.calibrationMode, self.calibration_config())
+            self.calibration.reset()
             return False
 
         def reset_score():
@@ -75,10 +67,7 @@ class AI:
             return False
 
         def store_calibration():
-            if self.calibrationMode is not None:
-                self.calibration_config().store()
-            else:
-                logging.info("calibration not found. config not stored")
+            self.calibration.store()
             return False
 
         def pause():
@@ -103,7 +92,7 @@ class AI:
             ord('q'): lambda: True,
             Key.SPACE.value: pause,
             ord('s'): store_calibration,
-            ord('r'): reset_calibration if self.calibrationMode else reset_score,
+            ord('r'): reset_calibration if self.calibration else reset_score,
             ord('n'): step_frame
         }
 
@@ -126,12 +115,14 @@ class AI:
                         self.sink.show(frame)
                         if self.output is not None:
                             self.output.write(frame)
-                        if self.calibrationMode is not None:
+                        if self.calibration is not None:
                             self.render_calibration()
                         if self.sink.render(callbacks=callbacks):
                             break
                     else:
-                        print(f"{info.filter(self.info_verbosity).to_string() if self.info_verbosity is not None else ''} - FPS: {fps} {BLANKS}", end="\r")
+                        print(
+                            f"{info.filter(self.infoVerbosity).to_string() if self.infoVerbosity is not None else ''} - FPS: {fps} {BLANKS}",
+                            end="\r")
                 except Empty:
                     # logger.debug("No new frame")
                     pass
@@ -143,7 +134,7 @@ class AI:
 
         if not self.headless:
             self.sink.stop()
-        if self.calibrationMode is not None:
+        if self.calibration is not None:
             self.calibration_display.stop()
         self.tracking.stop()
         logging.debug("ai stopped")
@@ -157,7 +148,8 @@ class AI:
             color = (0, 255, 127)
         else:
             color = (100, 0, 255)
-        r_text(frame, f"FPS: {frames_per_second}", frame.shape[1], 0, color, background=BLACK, text_scale=0.5, thickness=1, padding=(20, 20), ground_zero='tr')
+        r_text(frame, f"FPS: {frames_per_second}", frame.shape[1], 0, color, background=BLACK, text_scale=0.5,
+               thickness=1, padding=(20, 20), ground_zero='tr')
 
     def render_calibration(self):
         try:
@@ -168,11 +160,11 @@ class AI:
 
     def adjust_calibration(self):
         # see if some sliders changed
-        if self.calibrationMode in ["goal", "ball"]:
-            new_config = get_slider_config(self.calibrationMode)
-            if new_config != self.calibration_config():
-                self.set_calibration_config(new_config)
-                self.tracking.config_input(self.calibration_config())
+        if self.calibrationMode in [CalibrationMode.GOAL, CalibrationMode.BALL]:
+            new_config = self.calibration.get_slider_config()
+            if new_config != self.calibration.config:
+                self.calibration.config = new_config
+                self.tracking.config_input(self.calibration.config)
 
     @staticmethod
     def scale_dim(dim, scale_percent):

@@ -1,24 +1,21 @@
 import logging
 import os
-from abc import ABC
 from dataclasses import dataclass
-from typing import TypeVar, Generic
 
 import cv2
 import imutils
 import numpy as np
 import yaml
 
-from . import Detector, DetectorResult
-from ..models import Frame, DetectedGoals, Point, Goal, Blob, Goals, DetectedBall, HSV
+from const import BallPresets
+from . import BallDetector, GoalDetector
+from ..models import Frame, DetectedGoals, Point, Goal, Blob, Goals, DetectedBall, HSV, rgb2hsv
 
 logger = logging.getLogger(__name__)
 
-DetectorConfig = TypeVar('DetectorConfig')
-
 
 @dataclass
-class BallConfig:
+class BallColorConfig:
     bounds: [HSV, HSV]
     invert_frame: bool = False
     invert_mask: bool = False
@@ -30,20 +27,47 @@ class BallConfig:
             yaml.dump(self.to_dict(), f)
 
     @staticmethod
+    def yellow():
+        lower = rgb2hsv(np.array([140, 86, 73]))
+        upper = rgb2hsv(np.array([0, 255, 94]))
+
+        return BallColorConfig(bounds=[lower, upper], invert_frame=False, invert_mask=False)
+
+    @staticmethod
+    def orange():
+        lower = rgb2hsv(np.array([166, 94, 72]))
+        upper = rgb2hsv(np.array([0, 249, 199]))
+
+        return BallColorConfig(bounds=[lower, upper], invert_frame=False, invert_mask=False)
+
+    @staticmethod
+    def preset(ball: str):
+        match ball:
+            case BallPresets.YAML:
+                return BallColorConfig.load() or BallColorConfig.yellow()
+            case BallPresets.ORANGE:
+                return BallColorConfig.orange()
+            case BallPresets.YELLOW:
+                return BallColorConfig.yellow()
+            case _:
+                logging.error("Unknown ball color. Falling back to 'yellow'")
+                return BallColorConfig.yellow()
+
+    @staticmethod
     def load(filename='ball.yaml'):
         if os.path.isfile(filename):
             logging.info("Loading ball config ball.yaml")
             with open(filename, 'r') as f:
                 c = yaml.safe_load(f)
-                return BallConfig(invert_frame=c['invert_frame'], invert_mask=c['invert_mask'],
-                                  bounds=np.array(c['bounds']))
+                return BallColorConfig(invert_frame=c['invert_frame'], invert_mask=c['invert_mask'],
+                                       bounds=np.array(c['bounds']))
         else:
             logging.info("No ball config found")
         return None
 
     def __eq__(self, other):
         """Overrides the default implementation"""
-        if isinstance(other, BallConfig):
+        if isinstance(other, BallColorConfig):
             return (all([a == b for a, b in zip(self.bounds[0], other.bounds[0])]) and
                     all([a == b for a, b in zip(self.bounds[1], other.bounds[1])]) and
                     self.invert_mask == other.invert_mask and
@@ -58,12 +82,18 @@ class BallConfig:
         }
 
 
-
 @dataclass
-class GoalConfig:
+class GoalColorConfig:
     bounds: [int, int]
     invert_frame: bool = True
     invert_mask: bool = True
+
+    @staticmethod
+    def preset():
+        default_config = GoalColorConfig(bounds=[0, 235], invert_frame=True, invert_mask=True)
+        if os.path.isfile('goal.yaml'):
+            return GoalColorConfig.load() or default_config
+        return default_config
 
     def store(self):
         filename = "goal.yaml"
@@ -75,11 +105,11 @@ class GoalConfig:
     def load(filename='goal.yaml'):
         with open(filename, 'r') as f:
             c = yaml.safe_load(f)
-            return GoalConfig(**c)
+            return GoalColorConfig(**c)
 
     def __eq__(self, other):
         """Overrides the default implementation"""
-        if isinstance(other, GoalConfig):
+        if isinstance(other, GoalColorConfig):
             return (all([a == b for a, b in zip(self.bounds, other.bounds)]) and
                     self.invert_mask == other.invert_mask and
                     self.invert_frame == other.invert_frame)
@@ -93,13 +123,7 @@ class GoalConfig:
         }
 
 
-class ColorDetector(Generic[DetectorConfig, DetectorResult], Detector[DetectorResult], ABC):
-    def __init__(self, config: DetectorConfig, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.config = config
-
-
-class BallDetector(ColorDetector[BallConfig, DetectedBall]):
+class BallColorDetector(BallDetector[BallColorConfig]):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -112,7 +136,7 @@ class BallDetector(ColorDetector[BallConfig, DetectedBall]):
             logger.error("Ball Detection not possible. Config is None")
 
 
-class GoalDetector(ColorDetector[GoalConfig, DetectedGoals]):
+class GoalColorDetector(GoalDetector[GoalColorConfig]):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -156,7 +180,7 @@ class GoalDetector(ColorDetector[GoalConfig, DetectedGoals]):
             logger.error("Goal Detection not possible. config is None")
 
 
-def filter_color_range(frame, config: BallConfig) -> Frame:
+def filter_color_range(frame, config: BallColorConfig) -> Frame:
     [lower, upper] = config.bounds
     f = frame if not config.invert_frame else cv2.bitwise_not(frame)
 
@@ -182,7 +206,7 @@ def filter_color_range(frame, config: BallConfig) -> Frame:
     return cv2.bitwise_and(f, f, mask=simple_mask)
 
 
-def filter_gray_range(frame, config: GoalConfig) -> Frame:
+def filter_gray_range(frame, config: GoalColorConfig) -> Frame:
     try:
         [lower, upper] = config.bounds
         f = frame if not config.invert_frame else cv2.bitwise_not(frame)

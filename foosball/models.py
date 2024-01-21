@@ -100,9 +100,15 @@ class DetectedGoals:
 Track = collections.deque
 
 
+class Verbosity(Enum):
+    TRACE = 0
+    DEBUG = 1
+    INFO = 2
+
+
 @dataclass
 class Info:
-    verbosity: int
+    verbosity: Verbosity
     title: str
     value: str
 
@@ -123,8 +129,9 @@ class InfoLog:
     def concat(self, info_log):
         self.infos = self.infos + info_log.infos
 
-    def filter(self, info_verbosity=0):
-        return InfoLog(infos=[i for i in self.infos if info_verbosity <= i.verbosity])
+    def filter(self, infoVerbosity: Verbosity = Verbosity.TRACE):
+        return InfoLog(
+            infos=[i for i in self.infos if infoVerbosity is not None and infoVerbosity.value <= i.verbosity.value])
 
     def to_string(self):
         return " - ".join([i.to_string() for i in self.infos])

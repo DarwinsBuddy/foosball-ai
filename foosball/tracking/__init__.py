@@ -1,56 +1,21 @@
-import logging
-import os.path
 from multiprocessing import Queue
 
 import cv2
 import numpy as np
 
-from const import GPU, CalibrationMode, BallPresets
+from const import GPU, CalibrationMode
 from .analyze import Analyzer
 from .preprocess import PreProcessor
 from .render import Renderer
 from .tracker import Tracker
-from ..detectors.color import BallConfig, GoalConfig
-from ..models import Mask, FrameDimensions, rgb2hsv
+from ..detectors import BallDetector
+from ..detectors.color import GoalDetector
+from ..models import Mask, FrameDimensions
 from ..pipe.Pipe import Pipe
 
 
 def dim(frame) -> [int, int]:
     return [frame.shape[1], frame.shape[0]]
-
-
-def yellow_ball() -> BallConfig:
-    lower = rgb2hsv(np.array([140, 86, 73]))
-    upper = rgb2hsv(np.array([0, 255, 94]))
-
-    return BallConfig(bounds=[lower, upper], invert_frame=False, invert_mask=False)
-
-
-def orange_ball() -> BallConfig:
-    lower = rgb2hsv(np.array([166, 94, 72]))
-    upper = rgb2hsv(np.array([0, 249, 199]))
-
-    return BallConfig(bounds=[lower, upper], invert_frame=False, invert_mask=False)
-
-
-def get_goal_config() -> GoalConfig:
-    default_config = GoalConfig(bounds=[0, 235], invert_frame=True, invert_mask=True)
-    if os.path.isfile('goal.yaml'):
-        return GoalConfig.load() or default_config
-    return default_config
-
-
-def get_ball_config(ball: str) -> BallConfig:
-    match ball:
-        case BallPresets.YAML:
-            return BallConfig.load() or yellow_ball()
-        case BallPresets.ORANGE:
-            return orange_ball()
-        case BallPresets.YELLOW:
-            return yellow_ball()
-        case _:
-            logging.error("Unknown ball color. Falling back to 'yellow'")
-            return yellow_ball()
 
 
 def generate_frame_mask(width, height) -> Mask:
@@ -65,16 +30,16 @@ def generate_frame_mask(width, height) -> Mask:
 
 class Tracking:
 
-    def __init__(self, stream, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, headless=False, maxPipeSize=128, calibrationMode=None, **kwargs):
+    def __init__(self, stream, dims: FrameDimensions, goal_detector: GoalDetector, ball_detector: BallDetector, headless=False, maxPipeSize=128, calibrationMode=None, **kwargs):
         super().__init__()
         self.calibrationMode = calibrationMode
 
         width, height = dims.scaled
         mask = generate_frame_mask(width, height)
         gpu_flags = kwargs.get(GPU)
-        self.preprocessor = PreProcessor(dims, goal_config, mask=mask, headless=headless, useGPU='preprocess' in gpu_flags,
+        self.preprocessor = PreProcessor(dims, goal_detector, mask=mask, headless=headless, useGPU='preprocess' in gpu_flags,
                                          calibrationMode=calibrationMode, **kwargs)
-        self.tracker = Tracker(ball_config, useGPU='tracker' in gpu_flags, calibrationMode=calibrationMode, **kwargs)
+        self.tracker = Tracker(ball_detector, useGPU='tracker' in gpu_flags, calibrationMode=calibrationMode, **kwargs)
         self.analyzer = Analyzer(**kwargs)
         self.renderer = Renderer(dims, headless=headless, useGPU='render' in gpu_flags, **kwargs)
 

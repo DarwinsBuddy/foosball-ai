@@ -6,7 +6,7 @@ import signal
 
 from const import CALIBRATION_MODE, CALIBRATION_IMG_PATH, CALIBRATION_VIDEO, CALIBRATION_SAMPLE_SIZE, ARUCO_BOARD, \
     FILE, CAMERA_ID, FRAMERATE, OUTPUT, CAPTURE, DISPLAY, BALL, XPAD, YPAD, SCALE, VERBOSE, HEADLESS, OFF, \
-    MAX_PIPE_SIZE, INFO_VERBOSITY, GPU, AUDIO, WEBHOOK, BUFFER
+    MAX_PIPE_SIZE, INFO_VERBOSITY, GPU, AUDIO, WEBHOOK, BUFFER, BallPresets, CalibrationMode
 from foosball.arUcos.calibration import print_aruco_board, calibrate_camera
 from foosball.tracking.ai import AI
 
@@ -39,7 +39,7 @@ def get_argparse():
     ap.add_argument("-conf", "--config", type=file_path, default=None)
 
     calibration = ap.add_argument_group(title="Calibration", description="Options for camera or setup calibration")
-    calibration.add_argument("-c", f"--{CALIBRATION_MODE}", choices=['ball', 'goal', 'cam'], help="Calibration mode")
+    calibration.add_argument("-c", f"--{CALIBRATION_MODE}", choices=[CalibrationMode.BALL, CalibrationMode.GOAL, CalibrationMode.CAM], help="Calibration mode")
     calibration.add_argument("-ci", f"--{CALIBRATION_IMG_PATH}", type=dir_path, default=None,
                              help="Images path for calibration mode. If not given switching to live calibration")
     calibration.add_argument("-cv", f"--{CALIBRATION_VIDEO}", type=file_path, default=None,
@@ -57,7 +57,7 @@ def get_argparse():
     io.add_argument("-d", f"--{DISPLAY}", choices=['cv', 'gear'], default='cv', help="display backend cv=direct display, gear=stream")
 
     tracker = ap.add_argument_group(title="Tracker", description="Options for the ball/goal tracker")
-    tracker.add_argument("-ba", f"--{BALL}", choices=['yaml', 'orange', 'yellow'], default='yaml',
+    tracker.add_argument("-ba", f"--{BALL}", choices=[BallPresets.YAML, BallPresets.ORANGE, BallPresets.YELLOW], default=BallPresets.YAML,
                     help="Pre-configured ball color bounds. If 'yaml' is selected, a file called 'ball.yaml' "
                          "(stored by hitting 's' in ball calibration mode) will be loaded as a preset."
                          "If no file present fallback to 'yellow'")

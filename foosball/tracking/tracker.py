@@ -5,8 +5,8 @@ from queue import Empty
 
 from const import CalibrationMode
 from .preprocess import WarpMode, project_blob
-from ..detectors.color import BallDetector, BallConfig
-from ..models import TrackResult, Track, Info, Blob, Goals, InfoLog
+from ..detectors.color import BallColorDetector, BallColorConfig
+from ..models import TrackResult, Track, Info, Blob, Goals, InfoLog, Verbosity
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..pipe.Pipe import clear
 from ..utils import generate_processor_switches
@@ -19,7 +19,7 @@ def log(result: TrackResult) -> None:
 
 class Tracker(BaseProcess):
 
-    def __init__(self, ball_config: BallConfig, useGPU: bool = False, buffer=16, off=False, verbose=False,
+    def __init__(self, ball_detector: BallColorDetector, useGPU: bool = False, buffer=16, off=False, verbose=False,
                  calibrationMode=None, **kwargs):
         super().__init__(name="Tracker")
         self.ball_track = Track(maxlen=buffer)
@@ -29,13 +29,13 @@ class Tracker(BaseProcess):
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
         # define the lower_ball and upper_ball boundaries of the
         # ball in the HSV color space, then initialize the
-        self.ball_calibration = self.calibrationMode == CalibrationMode.BALL
-        self.ball_detector = BallDetector(ball_config)
-        self.bounds_in = Queue() if self.ball_calibration else None
-        self.calibration_out = Queue() if self.ball_calibration else None
+        self.calibration = self.calibrationMode == CalibrationMode.BALL
+        self.ball_detector = ball_detector
+        self.bounds_in = Queue() if self.calibration else None
+        self.calibration_out = Queue() if self.calibration else None
 
     def close(self) -> None:
-        if self.ball_calibration:
+        if self.calibration:
             clear(self.bounds_in)
             self.bounds_in.close()
             clear(self.calibration_out)
@@ -52,24 +52,24 @@ class Tracker(BaseProcess):
 
     def get_info(self, ball_track: Track) -> InfoLog:
         info = InfoLog(infos=[
-            Info(verbosity=1, title="Track length", value=f"{str(sum([1 for p in ball_track or [] if p is not None])).rjust(2, ' ')}"),
-            Info(verbosity=0, title="Calibration", value=f"{self.calibrationMode if self.calibrationMode is not None else 'off'}"),
-            Info(verbosity=0, title="Tracker", value=f"{'off' if self.off else 'on'}")
+            Info(verbosity=Verbosity.DEBUG, title="Track length", value=f"{str(sum([1 for p in ball_track or [] if p is not None])).rjust(2, ' ')}"),
+            Info(verbosity=Verbosity.TRACE, title="Calibration", value=f"{self.calibrationMode if self.calibrationMode is not None else 'off'}"),
+            Info(verbosity=Verbosity.TRACE, title="Tracker", value=f"{'off' if self.off else 'on'}")
         ])
-        if self.ball_calibration:
+        if self.calibration:
             [lower, upper] = self.ball_detector.config.bounds
-            info.append(Info(verbosity=0, title="lower", value=f'({",".join(map(str,lower))})'))
-            info.append(Info(verbosity=0, title="upper", value=f'({",".join(map(str,upper))})'))
-            info.append(Info(verbosity=0, title="invert frame", value=f'{self.ball_detector.config.invert_frame}'))
-            info.append(Info(verbosity=0, title="invert mask", value=f'{self.ball_detector.config.invert_mask}'))
+            info.append(Info(verbosity=Verbosity.TRACE, title="lower", value=f'({",".join(map(str,lower))})'))
+            info.append(Info(verbosity=Verbosity.TRACE, title="upper", value=f'({",".join(map(str,upper))})'))
+            info.append(Info(verbosity=Verbosity.TRACE, title="invert frame", value=f'{self.ball_detector.config.invert_frame}'))
+            info.append(Info(verbosity=Verbosity.TRACE, title="invert mask", value=f'{self.ball_detector.config.invert_mask}'))
         return info
 
     @property
     def calibration_output(self) -> Queue:
         return self.calibration_out
 
-    def config_input(self, config: BallConfig) -> None:
-        if self.ball_calibration:
+    def config_input(self, config: BallColorConfig) -> None:
+        if self.calibration:
             self.bounds_in.put_nowait(config)
 
     def process(self, msg: Msg) -> Msg:
@@ -80,7 +80,7 @@ class Tracker(BaseProcess):
         info = None
         try:
             if not self.off:
-                if self.ball_calibration:
+                if self.calibration:
                     try:
                         self.ball_detector.config = self.bounds_in.get_nowait()
                     except Empty:
@@ -97,7 +97,7 @@ class Tracker(BaseProcess):
                             left=project_blob(goals.left, preprocess_result.homography_matrix, WarpMode.DEWARP),
                             right=project_blob(goals.right, preprocess_result.homography_matrix, WarpMode.DEWARP)
                         )
-                if self.ball_calibration:
+                if self.calibration:
                     self.calibration_out.put_nowait(self.iproc(ball_detection_result.frame))
                     # copy deque, since we otherwise run into odd tracks displayed
                 ball_track = self.update_ball_track(ball).copy()

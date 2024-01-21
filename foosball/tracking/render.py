@@ -4,7 +4,8 @@ import traceback
 import cv2
 import numpy as np
 
-from ..models import Goal, Score, FrameDimensions, Blob, InfoLog
+from const import INFO_VERBOSITY
+from ..models import Goal, Score, FrameDimensions, Blob, InfoLog, Verbosity
 from ..pipe.BaseProcess import Msg, BaseProcess
 from ..utils import generate_processor_switches
 logger = logging.getLogger(__name__)
@@ -102,11 +103,11 @@ class Renderer(BaseProcess):
     def close(self):
         pass
 
-    def __init__(self, dims: FrameDimensions, headless=False, useGPU: bool = False, infoVerbosity=None, *args, **kwargs):
+    def __init__(self, dims: FrameDimensions, headless=False, useGPU: bool = False, *args, **kwargs):
         super().__init__(name="Renderer")
         self.dims = dims
         self.headless = headless
-        self.infoVerbosity = infoVerbosity
+        self.infoVerbosity = Verbosity(kwargs.get(INFO_VERBOSITY)) if kwargs.get(INFO_VERBOSITY) else None
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
 
     def process(self, msg: Msg) -> Msg:

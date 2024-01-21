@@ -9,9 +9,9 @@ import numpy as np
 from const import CalibrationMode, OFF
 from ..arUcos import calibration
 from ..arUcos.models import Aruco
-from ..detectors.color import GoalDetector, GoalConfig
+from ..detectors.color import GoalDetector, GoalColorConfig
 from ..models import Frame, PreprocessResult, Point, Rect, Blob, Goals, FrameDimensions, ScaleDirection, \
-    InfoLog, Info
+    InfoLog, Info, Verbosity
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..pipe.Pipe import clear
 from ..utils import ensure_cpu, generate_processor_switches, relative_change, scale
@@ -40,7 +40,7 @@ def pad_rect(rectangle: Rect, xpad: int, ypad: int) -> Rect:
 
 
 class PreProcessor(BaseProcess):
-    def __init__(self, dims: FrameDimensions, goal_config: GoalConfig, headless=True, mask=None, used_markers=None,
+    def __init__(self, dims: FrameDimensions, goal_detector: GoalDetector, headless=True, mask=None, used_markers=None,
                  redetect_markers_frames: int = 60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
                  aruco_params=cv2.aruco.DetectorParameters(), xpad: int = 50, ypad: int = 20,
                  goal_change_threshold: float = 0.10, useGPU: bool = False, calibrationMode=None, verbose=False, **kwargs):
@@ -66,9 +66,9 @@ class PreProcessor(BaseProcess):
         self.goals_calibration = self.calibrationMode == CalibrationMode.GOAL
         self.calibration_out = Queue() if self.goals_calibration else None
         self.config_in = Queue() if self.goals_calibration else None
-        self.goal_detector = GoalDetector(goal_config)
+        self.goal_detector = goal_detector
 
-    def config_input(self, config: GoalConfig) -> None:
+    def config_input(self, config: GoalColorConfig) -> None:
         if self.goals_calibration:
             self.config_in.put_nowait(config)
 
@@ -104,14 +104,14 @@ class PreProcessor(BaseProcess):
 
             trigger_marker_detection = self.frames_since_last_marker_detection == 0 or len(self.markers) == 0
             goal_info = None
-            marker_info = Info(verbosity=0, title=f'{"? " if trigger_marker_detection else ""}Markers', value=f'{len(self.markers)}'.ljust(10, ' '))
+            marker_info = Info(verbosity=Verbosity.TRACE, title=f'{"? " if trigger_marker_detection else ""}Markers', value=f'{len(self.markers)}'.ljust(10, ' '))
             if not self.kwargs.get(OFF):
                 if trigger_marker_detection:
                     # detect markers
                     markers = self.detect_markers(frame)
                     # check if there are exactly 4 markers present
                     markers = [m for m in markers if m.id in self.used_markers]
-                    marker_info = Info(verbosity=0, title=f'{"! " if len(markers) != 4 else ""}Markers', value=f'{len(markers)}'.ljust(10, ' '))
+                    marker_info = Info(verbosity=Verbosity.TRACE, title=f'{"! " if len(markers) != 4 else ""}Markers', value=f'{len(markers)}'.ljust(10, ' '))
                     # logging.debug(f"markers {[list(m.id)[0] for m in markers]}")
                     if len(markers) == 4:
                         self.markers = markers
@@ -137,9 +137,9 @@ class PreProcessor(BaseProcess):
                                 right=self.goals.right if abs(right_change) < self.goal_change_threshold else new_goals.right
                             )
                         # TODO: distinguish between red or blue goal (instead of left and right)
-                    goal_info = Info(verbosity=1, title='goals', value=f'{"detected" if self.goals is not None else "fail"}')
+                    goal_info = Info(verbosity=Verbosity.DEBUG, title='goals', value=f'{"detected" if self.goals is not None else "fail"}')
                 else:
-                    goal_info = Info(verbosity=1, title='goals', value='none'.rjust(8, ' '))
+                    goal_info = Info(verbosity=Verbosity.DEBUG, title='goals', value='none'.rjust(8, ' '))
                     preprocessed = self.mask_frame(frame)
             info.append(marker_info)
             if goal_info is not None:

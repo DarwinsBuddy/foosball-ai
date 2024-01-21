@@ -31,6 +31,8 @@ def from_gpu(frame: GPUFrame) -> CPUFrame:
 
 def relative_change(old_value, new_value):
     return (new_value / old_value) - 1
+
+
 def generate_processor_switches(useGPU: bool = False) -> [Callable[[Frame], Frame], Callable[[Frame], Frame]]:
     if not useGPU:
         return [lambda x: x, lambda x: x]
@@ -39,6 +41,14 @@ def generate_processor_switches(useGPU: bool = False) -> [Callable[[Frame], Fram
 
 
 def ensure_cpu(frame: Frame) -> CPUFrame:
-    if type(frame) == cv2.UMat:
+    if isinstance(frame, cv2.UMat):
         return from_gpu(frame)
     return frame
+
+
+def avg(x, y):
+    return int((x + y) / 2)
+
+
+def int2bool(x: int) -> bool:
+    return True if x == 1 else False

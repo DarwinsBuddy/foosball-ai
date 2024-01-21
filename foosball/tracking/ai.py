@@ -10,7 +10,7 @@ from . import Tracking
 from .render import r_text, BLACK
 from ..detectors.color import GoalColorConfig, BallColorDetector, BallColorConfig, GoalColorDetector
 from ..models import FrameDimensions, Frame, InfoLog, Verbosity
-from ..sink.opencv import DisplaySink, Key, BallColorCalibration, GoalColorCalibration, CalibrationConfig
+from ..sink.opencv import DisplaySink, Key, BallColorCalibration, GoalColorCalibration
 from ..source import Source
 
 BLANKS = (' ' * 80)

@@ -82,7 +82,7 @@ class Calibration(ABC, Generic[CalibrationConfig]):
         self.init_config: CalibrationConfig = deepcopy(config)
 
     def reset(self):
-        print(f"Reset calibration config", end="\n\n\n")
+        print("Reset calibration config", end="\n\n\n")
         self.set_slider_config(self.init_config)
 
     @abstractmethod

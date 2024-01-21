@@ -1,5 +1,3 @@
-from enum import Enum
-
 CALIBRATION_MODE = "calibrationMode"
 CALIBRATION_IMG_PATH = "calibrationImagePath"
 CALIBRATION_VIDEO = "calibrationVideo"

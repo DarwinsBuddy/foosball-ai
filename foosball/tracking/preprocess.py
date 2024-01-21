@@ -7,7 +7,8 @@ import cv2
 import numpy as np
 
 from const import CalibrationMode, OFF
-from ..arUcos import calibration, Aruco
+from ..arUcos import calibration
+from ..arUcos.models import Aruco
 from ..detectors.color import GoalDetector, GoalConfig
 from ..models import Frame, PreprocessResult, Point, Rect, Blob, Goals, FrameDimensions, ScaleDirection, \
     InfoLog, Info

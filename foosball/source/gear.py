@@ -15,7 +15,7 @@ class GearSource(Source):
         self.eos = False
         # if a video path was not supplied, grab the reference
         # to the webcam
-        if video is None or type(video) == int:
+        if video is None or isinstance(video, int):
             options = {
                  "CAP_PROP_FRAME_WIDTH": resolution[0],
                  "CAP_PROP_FRAME_HEIGHT": resolution[1],

@@ -3,7 +3,7 @@ name: Tests
 on: [pull_request, push]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -36,15 +36,10 @@ jobs:
           python -m venv .venv
           . .venv/bin/activate
           python -m pip install --upgrade pip
-          pip install flake8
           pip install -r requirements_dev.txt
         if: steps.cache-venv.outputs.cache-hit != 'true'
-      - name: Lint with flake8
-        run: |
-          . .venv/bin/activate
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 foosball --count --select=E9,F63,F7,F82 --show-source --statistics --config tests/setup.cfg
-          flake8 foosball --count --exit-zero --max-complexity=10 --statistics --config tests/setup.cfg
+      - name: Lint with ruff
+        uses: chartboost/ruff-action@v1
       - name: Test with pytest
         run: |
           . .venv/bin/activate

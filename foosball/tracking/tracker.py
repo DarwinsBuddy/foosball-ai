@@ -58,10 +58,10 @@ class Tracker(BaseProcess):
         ])
         if self.ball_calibration:
             [lower, upper] = self.ball_detector.config.bounds
-            info.append(Info(verbosity=0, title=f"lower", value=f'({",".join(map(str,lower))})'))
-            info.append(Info(verbosity=0, title=f"upper", value=f'({",".join(map(str,upper))})'))
-            info.append(Info(verbosity=0, title=f"invert frame", value=f'{self.ball_detector.config.invert_frame}'))
-            info.append(Info(verbosity=0, title=f"invert mask", value=f'{self.ball_detector.config.invert_mask}'))
+            info.append(Info(verbosity=0, title="lower", value=f'({",".join(map(str,lower))})'))
+            info.append(Info(verbosity=0, title="upper", value=f'({",".join(map(str,upper))})'))
+            info.append(Info(verbosity=0, title="invert frame", value=f'{self.ball_detector.config.invert_frame}'))
+            info.append(Info(verbosity=0, title="invert mask", value=f'{self.ball_detector.config.invert_mask}'))
         return info
 
     @property

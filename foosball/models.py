@@ -1,13 +1,10 @@
 import collections
-import logging
-import os
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Union
 
 import cv2
 import numpy as np
-import yaml
 
 HSV = np.ndarray  # list[int, int, int]
 RGB = np.ndarray  # list[int, int, int]

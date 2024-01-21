@@ -81,8 +81,8 @@ def add_config_input(calibrationMode, config):
 
 def add_ball_config_input(bounds: BallConfig):
     [lower_hsv, upper_hsv] = bounds.bounds
-    cv2.createTrackbar(f'invert_frame', BALL, 1 if bounds.invert_frame else 0, 1, lambda v: None)
-    cv2.createTrackbar(f'invert_mask', BALL, 1 if bounds.invert_mask else 0, 1, lambda v: None)
+    cv2.createTrackbar('invert_frame', BALL, 1 if bounds.invert_frame else 0, 1, lambda v: None)
+    cv2.createTrackbar('invert_mask', BALL, 1 if bounds.invert_mask else 0, 1, lambda v: None)
     # create trackbars for color change
     cv2.createTrackbar('Hue', BALL, avg(lower_hsv[0], upper_hsv[0]), 179, lambda v: None)
     cv2.createTrackbar(slider_label('S', 'low'), BALL, lower_hsv[1], 255, lambda v: None)
@@ -94,8 +94,8 @@ def add_ball_config_input(bounds: BallConfig):
 
 def add_goals_config_input(config: GoalConfig):
     [lower, upper] = config.bounds
-    cv2.createTrackbar(f'invert_frame', GOAL, 1 if config.invert_frame else 0, 1, lambda v: None)
-    cv2.createTrackbar(f'invert_mask', GOAL, 1 if config.invert_mask else 0, 1, lambda v: None)
+    cv2.createTrackbar('invert_frame', GOAL, 1 if config.invert_frame else 0, 1, lambda v: None)
+    cv2.createTrackbar('invert_mask', GOAL, 1 if config.invert_mask else 0, 1, lambda v: None)
     # create trackbars for color change
     cv2.createTrackbar("lower", GOAL, lower, 255, lambda v: None)
     cv2.createTrackbar("upper", GOAL, upper, 255, lambda v: None)
@@ -138,7 +138,7 @@ def reset_goal_config(config: GoalConfig):
 
 
 def store_ball_config(config: BallConfig):
-    filename = f"ball.yaml"
+    filename = "ball.yaml"
     [lower, upper] = config.bounds
     print(f"Store config {filename}" + (" " * 50), end="\n\n")
     with open(filename, "w") as f:
@@ -151,7 +151,7 @@ def store_ball_config(config: BallConfig):
 
 
 def store_goals_config(config: GoalConfig):
-    filename = f"goal.yaml"
+    filename = "goal.yaml"
     [lower, upper] = config.bounds
     print(f"Store config {filename}" + (" " * 50), end="\n\n")
     with open(filename, "w") as f:

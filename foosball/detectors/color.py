@@ -24,7 +24,7 @@ class BallConfig:
     invert_mask: bool = False
 
     def store(self):
-        filename = f"ball.yaml"
+        filename = "ball.yaml"
         print(f"Store config {filename}" + (" " * 50), end="\n\n")
         with open(filename, "w") as f:
             yaml.dump(self.to_dict(), f)
@@ -66,7 +66,7 @@ class GoalConfig:
     invert_mask: bool = True
 
     def store(self):
-        filename = f"goal.yaml"
+        filename = "goal.yaml"
         print(f"Store config {filename}" + (" " * 50), end="\n\n")
         with open(filename, "w") as f:
             yaml.dump(self.to_dict(), f)

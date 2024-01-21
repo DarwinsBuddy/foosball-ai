@@ -40,6 +40,8 @@ jobs:
         if: steps.cache-venv.outputs.cache-hit != 'true'
       - name: Lint with ruff
         uses: chartboost/ruff-action@v1
+        with:
+          src: "./foosball"
       - name: Test with pytest
         run: |
           . .venv/bin/activate

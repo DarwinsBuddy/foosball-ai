@@ -1,0 +1,10 @@
+{
+  "audio": true,
+  "scale": 0.4,
+  "xpad": 0,
+  "info_verbosity": 2,
+  "cameraId": 4,
+  "headless": false,
+  "maxPipeSize": 200,
+  "gpu": []
+}

@@ -24,7 +24,7 @@ class AI:
         self.headless = kwargs.get('headless')
         self.sink = dis if not self.headless else None
         self.paused = False
-        self.calibration = self.kwargs.get('calibration')
+        self.calibrationMode = self.kwargs.get('calibrationMode')
         self._stopped = False
         self.ball_config = get_ball_config(self.kwargs.get('ball'))
         self.goals_config = get_goal_config()
@@ -32,8 +32,8 @@ class AI:
 
         self.output = None if kwargs.get('output') is None else WriteGear(kwargs.get('output'), logging=True)
 
-        if self.calibration is not None:
-            self.calibration_config = lambda: self.ball_config if self.calibration == 'ball' else self.goals_config
+        if self.calibrationMode is not None:
+            self.calibration_config = lambda: self.ball_config if self.calibrationMode == 'ball' else self.goals_config
         self.detection_frame = None
 
         original = self.source.dim()
@@ -43,16 +43,16 @@ class AI:
 
         self.tracking = Tracking(self.source, self.dims, self.ball_config, self.goals_config, **self.kwargs)
 
-        if not self.headless and self.calibration is not None:
-            self.calibration_display = DisplaySink(self.calibration, pos='br')
+        if not self.headless and self.calibrationMode is not None:
+            self.calibration_display = DisplaySink(self.calibrationMode, pos='br')
             # init slider window
-            add_config_input(self.calibration, self.calibration_config())
+            add_config_input(self.calibrationMode, self.calibration_config())
 
         self.fps = FPS()
 
     def set_calibration_config(self, config: dict):
-        if self.calibration is not None:
-            if self.calibration == 'ball':
+        if self.calibrationMode is not None:
+            if self.calibrationMode == 'ball':
                 self.ball_config = config
             else:
                 self.goals_config = config
@@ -62,8 +62,8 @@ class AI:
 
     def process_video(self):
         def reset_calibration():
-            if self.calibration is not None:
-                reset_config(self.calibration, self.calibration_config())
+            if self.calibrationMode is not None:
+                reset_config(self.calibrationMode, self.calibration_config())
             return False
 
         def reset_score():
@@ -71,7 +71,7 @@ class AI:
             return False
 
         def store_calibration():
-            if self.calibration is not None:
+            if self.calibrationMode is not None:
                 self.calibration_config().store()
             else:
                 logging.info("calibration not found. config not stored")
@@ -99,7 +99,7 @@ class AI:
             ord('q'): lambda: True,
             Key.SPACE.value: pause,
             ord('s'): store_calibration,
-            ord('r'): reset_calibration if self.calibration else reset_score,
+            ord('r'): reset_calibration if self.calibrationMode else reset_score,
             ord('n'): step_frame
         }
 
@@ -122,7 +122,7 @@ class AI:
                         self.sink.show(frame)
                         if self.output is not None:
                             self.output.write(frame)
-                        if self.calibration is not None:
+                        if self.calibrationMode is not None:
                             self.render_calibration()
                         if self.sink.render(callbacks=callbacks):
                             break
@@ -139,7 +139,7 @@ class AI:
 
         if not self.headless:
             self.sink.stop()
-        if self.calibration is not None:
+        if self.calibrationMode is not None:
             self.calibration_display.stop()
         self.tracking.stop()
         logging.debug("ai stopped")
@@ -164,8 +164,8 @@ class AI:
 
     def adjust_calibration(self):
         # see if some sliders changed
-        if self.calibration in ["goal", "ball"]:
-            new_config = get_slider_config(self.calibration)
+        if self.calibrationMode in ["goal", "ball"]:
+            new_config = get_slider_config(self.calibrationMode)
             if new_config != self.calibration_config():
                 self.set_calibration_config(new_config)
                 self.tracking.config_input(self.calibration_config())

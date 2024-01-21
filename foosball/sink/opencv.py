@@ -73,10 +73,10 @@ def slider_label(rgb, bound):
     return f"{rgb} ({bound})"
 
 
-def add_config_input(calibration, config):
-    if calibration == GOAL:
+def add_config_input(calibrationMode, config):
+    if calibrationMode == GOAL:
         add_goals_config_input(config)
-    elif calibration == BALL:
+    elif calibrationMode == BALL:
         add_ball_config_input(config)
 
 
@@ -103,10 +103,10 @@ def add_goals_config_input(config: GoalConfig):
     # cv2.createButton("Reset", reset_bounds, (name, lower_rgb, upper_rgb))
 
 
-def reset_config(calibration, config):
-    if calibration == GOAL:
+def reset_config(calibrationMode, config):
+    if calibrationMode == GOAL:
         reset_goal_config(config)
-    elif calibration == BALL:
+    elif calibrationMode == BALL:
         reset_ball_config(config)
 
 
@@ -164,10 +164,10 @@ def store_goals_config(config: GoalConfig):
         }, f)
 
 
-def get_slider_config(calibration):
-    if calibration == GOAL:
+def get_slider_config(calibrationMode):
+    if calibrationMode == GOAL:
         return get_slider_goals_config()
-    elif calibration == BALL:
+    elif calibrationMode == BALL:
         return get_slider_ball_config()
 
 

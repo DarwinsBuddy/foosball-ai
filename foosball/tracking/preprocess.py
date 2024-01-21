@@ -61,9 +61,9 @@ class PreProcessor(BaseProcess):
         self.homography_matrix = None
         self.frames_since_last_marker_detection = 0
         self.goals = None
-        self.calibration = kwargs.get('calibration')
+        self.calibrationMode = kwargs.get('calibrationMode')
         self.verbose = kwargs.get('verbose')
-        self.goals_calibration = self.calibration == "goal"
+        self.goals_calibration = self.calibrationMode == "goal"
         self.calibration_out = Queue() if self.goals_calibration else None
         self.config_in = Queue() if self.goals_calibration else None
 

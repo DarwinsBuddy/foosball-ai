@@ -64,7 +64,7 @@ class Tracking:
 
     def __init__(self, stream, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, headless=False, maxPipeSize=128, **kwargs):
         super().__init__()
-        self.calibration = kwargs.get('calibration')
+        self.calibrationMode = kwargs.get('calibrationMode')
         self.dims = dims
         width, height = dims.scaled
         mask = generate_frame_mask(width, height)
@@ -102,15 +102,15 @@ class Tracking:
 
     @property
     def calibration_output(self) -> Queue:
-        if self.calibration == "ball":
+        if self.calibrationMode == "ball":
             return self.tracker.calibration_out
-        elif self.calibration == "goal":
+        elif self.calibrationMode == "goal":
             return self.preprocessor.calibration_out
 
     def config_input(self, config) -> None:
-        if self.calibration == "ball":
+        if self.calibrationMode == "ball":
             return self.tracker.config_input(config)
-        elif self.calibration == "goal":
+        elif self.calibrationMode == "goal":
             return self.preprocessor.config_input(config)
 
     def reset_score(self):

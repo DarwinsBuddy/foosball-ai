@@ -24,12 +24,12 @@ class Tracker(BaseProcess):
         self.ball_track = Track(maxlen=kwargs.get('buffer'))
         self.off = kwargs.get('off')
         self.verbose = kwargs.get("verbose")
-        self.calibration = kwargs.get("calibration")
+        self.calibrationMode = kwargs.get("calibrationMode")
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
         # define the lower_ball and upper_ball boundaries of the
         # ball in the HSV color space, then initialize the
         self.ball_bounds = ball_bounds
-        self.ball_calibration = self.calibration == "ball"
+        self.ball_calibration = self.calibrationMode == "ball"
         self.calibration_bounds = lambda: self.ball_bounds if self.ball_calibration else None
         self.bounds_in = Queue() if self.ball_calibration else None
         self.calibration_out = Queue() if self.ball_calibration else None
@@ -53,7 +53,7 @@ class Tracker(BaseProcess):
     def get_info(self, ball_track: Track) -> InfoLog:
         info = InfoLog(infos=[
             Info(verbosity=1, title="Track length", value=f"{str(sum([1 for p in ball_track or [] if p is not None])).rjust(2, ' ')}"),
-            Info(verbosity=0, title="Calibration", value=f"{self.calibration if self.calibration is not None else 'off'}"),
+            Info(verbosity=0, title="Calibration", value=f"{self.calibrationMode if self.calibrationMode is not None else 'off'}"),
             Info(verbosity=0, title="Tracker", value=f"{'off' if self.off else 'on'}")
         ])
         if self.ball_calibration:

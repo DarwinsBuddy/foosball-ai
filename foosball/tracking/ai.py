@@ -5,6 +5,7 @@ from queue import Empty
 from imutils.video import FPS
 from vidgear.gears import WriteGear
 
+from const import HEADLESS, CALIBRATION_MODE, BALL, INFO_VERBOSITY, OUTPUT, CalibrationMode, SCALE
 from . import Tracking, get_ball_config, get_goal_config
 from .render import r_text, BLACK
 from ..source import Source
@@ -18,30 +19,33 @@ class AI:
 
     def __init__(self, source: Source, dis, *args, **kwargs):
         self.args = args
-        self.kwargs = kwargs
         self.logger = logging.getLogger("AI")
         self.source = source
-        self.headless = kwargs.get('headless')
+        self.headless = kwargs.get(HEADLESS)
         self.sink = dis if not self.headless else None
         self.paused = False
-        self.calibrationMode = self.kwargs.get('calibrationMode')
+        self.calibrationMode = kwargs.get(CALIBRATION_MODE)
         self._stopped = False
-        self.ball_config = get_ball_config(self.kwargs.get('ball'))
+        self.ball_config = get_ball_config(kwargs.get(BALL))
         self.goals_config = get_goal_config()
-        self.info_verbosity = kwargs.get('info_verbosity')
+        self.info_verbosity = kwargs.get(INFO_VERBOSITY)
 
-        self.output = None if kwargs.get('output') is None else WriteGear(kwargs.get('output'), logging=True)
+        self.output = None if kwargs.get(OUTPUT) is None else WriteGear(kwargs.get(OUTPUT), logging=True)
 
         if self.calibrationMode is not None:
-            self.calibration_config = lambda: self.ball_config if self.calibrationMode == 'ball' else self.goals_config
+            match self.calibrationMode:
+                case CalibrationMode.BALL:
+                    self.calibration_config = lambda: self.ball_config
+                case CalibrationMode.GOAL:
+                    self.calibration_config = lambda: self.goals_config
         self.detection_frame = None
 
         original = self.source.dim()
-        self.scale = self.kwargs.get('scale')
+        self.scale = kwargs.get(SCALE)
         scaled = self.scale_dim(original, self.scale)
         self.dims = FrameDimensions(original, scaled, self.scale)
 
-        self.tracking = Tracking(self.source, self.dims, self.ball_config, self.goals_config, **self.kwargs)
+        self.tracking = Tracking(self.source, self.dims, self.ball_config, self.goals_config, **kwargs)
 
         if not self.headless and self.calibrationMode is not None:
             self.calibration_display = DisplaySink(self.calibrationMode, pos='br')

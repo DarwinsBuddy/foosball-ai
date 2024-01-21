@@ -5,6 +5,7 @@ from multiprocessing import Queue
 import cv2
 import numpy as np
 
+from const import GPU, CalibrationMode, BallPresets
 from .analyze import Analyzer
 from .preprocess import PreProcessor
 from .render import Renderer
@@ -39,15 +40,16 @@ def get_goal_config() -> GoalConfig:
 
 
 def get_ball_config(ball: str) -> BallConfig:
-    if ball == 'yaml':
-        return BallConfig.load() or yellow_ball()
-    elif ball == 'orange' or ball == 'o':
-        return orange_ball()
-    elif ball == 'yellow' or ball == 'y':
-        return yellow_ball()
-    else:
-        logging.error("Unknown ball color. Falling back to 'yellow'")
-        return yellow_ball()
+    match ball:
+        case BallPresets.YAML:
+            return BallConfig.load() or yellow_ball()
+        case BallPresets.ORANGE:
+            return orange_ball()
+        case BallPresets.YELLOW:
+            return yellow_ball()
+        case _:
+            logging.error("Unknown ball color. Falling back to 'yellow'")
+            return yellow_ball()
 
 
 def generate_frame_mask(width, height) -> Mask:
@@ -62,17 +64,18 @@ def generate_frame_mask(width, height) -> Mask:
 
 class Tracking:
 
-    def __init__(self, stream, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, headless=False, maxPipeSize=128, **kwargs):
+    def __init__(self, stream, dims: FrameDimensions, ball_config: BallConfig, goal_config: GoalConfig, headless=False, maxPipeSize=128, calibrationMode=None, **kwargs):
         super().__init__()
-        self.calibrationMode = kwargs.get('calibrationMode')
-        self.dims = dims
+        self.calibrationMode = calibrationMode
+
         width, height = dims.scaled
         mask = generate_frame_mask(width, height)
-        self.preprocessor = PreProcessor(dims, goal_config, mask=mask, headless=headless, useGPU=kwargs.get('preprocess-gpu'),
-                                         **kwargs)
-        self.tracker = Tracker(ball_config, useGPU=kwargs.get('tracker-gpu'), **kwargs)
+        gpu_flags = kwargs.get(GPU)
+        self.preprocessor = PreProcessor(dims, goal_config, mask=mask, headless=headless, useGPU='preprocess' in gpu_flags,
+                                         calibrationMode=calibrationMode, **kwargs)
+        self.tracker = Tracker(ball_config, useGPU='tracker' in gpu_flags, calibrationMode=calibrationMode, **kwargs)
         self.analyzer = Analyzer(**kwargs)
-        self.renderer = Renderer(dims, headless=headless, useGPU=kwargs.get('render-gpu'), **kwargs)
+        self.renderer = Renderer(dims, headless=headless, useGPU='render' in gpu_flags, **kwargs)
 
         self.stream = stream
         self.pipe = Pipe(stream, [self.preprocessor, self.tracker, self.analyzer, self.renderer], maxsize=maxPipeSize)
@@ -102,16 +105,18 @@ class Tracking:
 
     @property
     def calibration_output(self) -> Queue:
-        if self.calibrationMode == "ball":
-            return self.tracker.calibration_out
-        elif self.calibrationMode == "goal":
-            return self.preprocessor.calibration_out
+        match self.calibrationMode:
+            case CalibrationMode.BALL:
+                return self.tracker.calibration_out
+            case CalibrationMode.GOAL:
+                return self.preprocessor.calibration_out
 
     def config_input(self, config) -> None:
-        if self.calibrationMode == "ball":
-            return self.tracker.config_input(config)
-        elif self.calibrationMode == "goal":
-            return self.preprocessor.config_input(config)
+        match self.calibrationMode:
+            case CalibrationMode.BALL:
+                return self.tracker.config_input(config)
+            case CalibrationMode.GOAL:
+                return self.preprocessor.config_input(config)
 
     def reset_score(self):
         self.analyzer.reset_score()

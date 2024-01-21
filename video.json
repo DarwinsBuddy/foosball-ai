@@ -2,7 +2,7 @@
   "audio": true,
   "scale": 0.4,
   "xpad": 0,
-  "info_verbosity": 1,
+  "infoVerbosity": 1,
   "file": "stock2.mp4",
   "headless": false,
   "maxPipeSize": 200,

@@ -102,12 +102,11 @@ class Renderer(BaseProcess):
     def close(self):
         pass
 
-    def __init__(self, dims: FrameDimensions, headless=False, useGPU: bool = False, info_verbosity=None, *args, **kwargs):
+    def __init__(self, dims: FrameDimensions, headless=False, useGPU: bool = False, infoVerbosity=None, *args, **kwargs):
         super().__init__(name="Renderer")
         self.dims = dims
         self.headless = headless
-        self.info_verbosity = info_verbosity
-        self.kwargs = kwargs
+        self.infoVerbosity = infoVerbosity
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
 
     def process(self, msg: Msg) -> Msg:
@@ -129,8 +128,8 @@ class Renderer(BaseProcess):
                     r_goal(f, goals.right)
                 r_track(f, track, self.dims.scale)
                 r_score(f, score, text_scale=1, thickness=4)
-                if self.info_verbosity is not None:
-                    r_info(f, shape, info.filter(self.info_verbosity), text_scale=0.5, thickness=1)
+                if self.infoVerbosity is not None:
+                    r_info(f, shape, info.filter(self.infoVerbosity), text_scale=0.5, thickness=1)
                 return Msg(kwargs={"result": self.iproc(f), 'info': info})
             else:
                 return Msg(kwargs={"result": None, 'info': info})

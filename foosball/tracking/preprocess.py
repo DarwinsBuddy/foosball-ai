@@ -6,6 +6,7 @@ from queue import Empty
 import cv2
 import numpy as np
 
+from const import CALIBRATION_MODE, VERBOSE, CalibrationMode, OFF
 from .colordetection import detect_goals
 from ..arUcos import calibration, Aruco
 from ..models import Frame, PreprocessResult, Point, Rect, GoalConfig, Blob, Goals, FrameDimensions, ScaleDirection, \
@@ -41,7 +42,7 @@ class PreProcessor(BaseProcess):
     def __init__(self, dims: FrameDimensions, goal_config: GoalConfig, headless=True, mask=None, used_markers=None,
                  redetect_markers_frames: int = 60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
                  aruco_params=cv2.aruco.DetectorParameters(), xpad: int = 50, ypad: int = 20,
-                 goal_change_threshold: float = 0.10, useGPU: bool = False, **kwargs):
+                 goal_change_threshold: float = 0.10, useGPU: bool = False, calibrationMode=None, verbose=False, **kwargs):
         super().__init__(name="Preprocess")
         self.dims = dims
         self.goal_change_threshold = goal_change_threshold
@@ -55,15 +56,14 @@ class PreProcessor(BaseProcess):
         self.ypad = ypad
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
         self.goal_config = goal_config
-        self.kwargs = kwargs
         self.detector, _ = calibration.init_aruco_detector(aruco_dictionary, aruco_params)
         self.markers = []
         self.homography_matrix = None
         self.frames_since_last_marker_detection = 0
         self.goals = None
-        self.calibrationMode = kwargs.get('calibrationMode')
-        self.verbose = kwargs.get('verbose')
-        self.goals_calibration = self.calibrationMode == "goal"
+        self.calibrationMode = calibrationMode
+        self.verbose = verbose
+        self.goals_calibration = self.calibrationMode == CalibrationMode.GOAL
         self.calibration_out = Queue() if self.goals_calibration else None
         self.config_in = Queue() if self.goals_calibration else None
 
@@ -104,7 +104,7 @@ class PreProcessor(BaseProcess):
             trigger_marker_detection = self.frames_since_last_marker_detection == 0 or len(self.markers) == 0
             goal_info = None
             marker_info = Info(verbosity=0, title=f'{"? " if trigger_marker_detection else ""}Markers', value=f'{len(self.markers)}'.ljust(10, ' '))
-            if not self.kwargs.get('off'):
+            if not self.kwargs.get(OFF):
                 if trigger_marker_detection:
                     # detect markers
                     markers = self.detect_markers(frame)

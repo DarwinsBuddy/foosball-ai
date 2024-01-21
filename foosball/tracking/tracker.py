@@ -3,6 +3,7 @@ import traceback
 from multiprocessing import Queue
 from queue import Empty
 
+from const import CalibrationMode
 from .colordetection import detect_ball
 from .preprocess import WarpMode, project_blob
 from ..models import TrackResult, Track, BallConfig, Info, Blob, Goals, InfoLog
@@ -18,18 +19,18 @@ def log(result: TrackResult) -> None:
 
 class Tracker(BaseProcess):
 
-    def __init__(self, ball_bounds: BallConfig, useGPU: bool = False, **kwargs):
+    def __init__(self, ball_bounds: BallConfig, useGPU: bool = False, buffer=16, off=False, verbose=False,
+                 calibrationMode=None, **kwargs):
         super().__init__(name="Tracker")
-        self.kwargs = kwargs
-        self.ball_track = Track(maxlen=kwargs.get('buffer'))
-        self.off = kwargs.get('off')
-        self.verbose = kwargs.get("verbose")
-        self.calibrationMode = kwargs.get("calibrationMode")
+        self.ball_track = Track(maxlen=buffer)
+        self.off = off
+        self.verbose = verbose
+        self.calibrationMode = calibrationMode
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
         # define the lower_ball and upper_ball boundaries of the
         # ball in the HSV color space, then initialize the
         self.ball_bounds = ball_bounds
-        self.ball_calibration = self.calibrationMode == "ball"
+        self.ball_calibration = self.calibrationMode == CalibrationMode.BALL
         self.calibration_bounds = lambda: self.ball_bounds if self.ball_calibration else None
         self.bounds_in = Queue() if self.ball_calibration else None
         self.calibration_out = Queue() if self.ball_calibration else None

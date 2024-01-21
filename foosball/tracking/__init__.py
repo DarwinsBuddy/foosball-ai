@@ -10,7 +10,8 @@ from .analyze import Analyzer
 from .preprocess import PreProcessor
 from .render import Renderer
 from .tracker import Tracker
-from ..models import Mask, FrameDimensions, BallConfig, rgb2hsv, GoalConfig
+from ..detectors.color import BallConfig, GoalConfig
+from ..models import Mask, FrameDimensions, rgb2hsv
 from ..pipe.Pipe import Pipe
 
 

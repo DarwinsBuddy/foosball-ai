@@ -4,9 +4,9 @@ from multiprocessing import Queue
 from queue import Empty
 
 from const import CalibrationMode
-from .colordetection import detect_ball
 from .preprocess import WarpMode, project_blob
-from ..models import TrackResult, Track, BallConfig, Info, Blob, Goals, InfoLog
+from ..detectors.color import BallDetector, BallConfig
+from ..models import TrackResult, Track, Info, Blob, Goals, InfoLog
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..pipe.Pipe import clear
 from ..utils import generate_processor_switches
@@ -19,7 +19,7 @@ def log(result: TrackResult) -> None:
 
 class Tracker(BaseProcess):
 
-    def __init__(self, ball_bounds: BallConfig, useGPU: bool = False, buffer=16, off=False, verbose=False,
+    def __init__(self, ball_config: BallConfig, useGPU: bool = False, buffer=16, off=False, verbose=False,
                  calibrationMode=None, **kwargs):
         super().__init__(name="Tracker")
         self.ball_track = Track(maxlen=buffer)
@@ -29,9 +29,8 @@ class Tracker(BaseProcess):
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
         # define the lower_ball and upper_ball boundaries of the
         # ball in the HSV color space, then initialize the
-        self.ball_bounds = ball_bounds
         self.ball_calibration = self.calibrationMode == CalibrationMode.BALL
-        self.calibration_bounds = lambda: self.ball_bounds if self.ball_calibration else None
+        self.ball_detector = BallDetector(ball_config)
         self.bounds_in = Queue() if self.ball_calibration else None
         self.calibration_out = Queue() if self.ball_calibration else None
 
@@ -58,11 +57,11 @@ class Tracker(BaseProcess):
             Info(verbosity=0, title="Tracker", value=f"{'off' if self.off else 'on'}")
         ])
         if self.ball_calibration:
-            [lower, upper] = self.calibration_bounds().bounds
+            [lower, upper] = self.ball_detector.config.bounds
             info.append(Info(verbosity=0, title=f"lower", value=f'({",".join(map(str,lower))})'))
             info.append(Info(verbosity=0, title=f"upper", value=f'({",".join(map(str,upper))})'))
-            info.append(Info(verbosity=0, title=f"invert frame", value=f'{self.calibration_bounds().invert_frame}'))
-            info.append(Info(verbosity=0, title=f"invert mask", value=f'{self.calibration_bounds().invert_mask}'))
+            info.append(Info(verbosity=0, title=f"invert frame", value=f'{self.ball_detector.config.invert_frame}'))
+            info.append(Info(verbosity=0, title=f"invert mask", value=f'{self.ball_detector.config.invert_mask}'))
         return info
 
     @property
@@ -83,11 +82,11 @@ class Tracker(BaseProcess):
             if not self.off:
                 if self.ball_calibration:
                     try:
-                        self.ball_bounds = self.bounds_in.get_nowait()
+                        self.ball_detector.config = self.bounds_in.get_nowait()
                     except Empty:
                         pass
                 f = self.proc(preprocess_result.preprocessed if preprocess_result.preprocessed is not None else preprocess_result.original)
-                ball_detection_result = detect_ball(f, self.ball_bounds)
+                ball_detection_result = self.ball_detector.detect(f)
                 ball = ball_detection_result.ball
                 # do not forget to project detected points onto the original frame on rendering
                 if not self.verbose:

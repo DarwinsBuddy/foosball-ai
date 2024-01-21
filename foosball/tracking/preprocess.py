@@ -6,10 +6,10 @@ from queue import Empty
 import cv2
 import numpy as np
 
-from const import CALIBRATION_MODE, VERBOSE, CalibrationMode, OFF
-from .colordetection import detect_goals
+from const import CalibrationMode, OFF
 from ..arUcos import calibration, Aruco
-from ..models import Frame, PreprocessResult, Point, Rect, GoalConfig, Blob, Goals, FrameDimensions, ScaleDirection, \
+from ..detectors.color import GoalDetector, GoalConfig
+from ..models import Frame, PreprocessResult, Point, Rect, Blob, Goals, FrameDimensions, ScaleDirection, \
     InfoLog, Info
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..pipe.Pipe import clear
@@ -55,7 +55,6 @@ class PreProcessor(BaseProcess):
         self.xpad = xpad
         self.ypad = ypad
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
-        self.goal_config = goal_config
         self.detector, _ = calibration.init_aruco_detector(aruco_dictionary, aruco_params)
         self.markers = []
         self.homography_matrix = None
@@ -66,6 +65,7 @@ class PreProcessor(BaseProcess):
         self.goals_calibration = self.calibrationMode == CalibrationMode.GOAL
         self.calibration_out = Queue() if self.goals_calibration else None
         self.config_in = Queue() if self.goals_calibration else None
+        self.goal_detector = GoalDetector(goal_config)
 
     def config_input(self, config: GoalConfig) -> None:
         if self.goals_calibration:
@@ -97,7 +97,7 @@ class PreProcessor(BaseProcess):
         try:
             if self.goals_calibration:
                 try:
-                    self.goal_config = self.config_in.get_nowait()
+                    self.goal_detector.config = self.config_in.get_nowait()
                 except Empty:
                     pass
 
@@ -121,7 +121,7 @@ class PreProcessor(BaseProcess):
                     preprocessed, self.homography_matrix = self.four_point_transform(frame, self.markers)
                     if trigger_marker_detection:
                         # detect goals anew
-                        goals_detection_result = detect_goals(preprocessed, self.goal_config)
+                        goals_detection_result = self.goal_detector.detect(preprocessed)
                         if self.goals_calibration:
                             self.calibration_out.put_nowait(ensure_cpu(goals_detection_result.frame))
                         # check if goals are not significantly smaller than before

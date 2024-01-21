@@ -6,8 +6,7 @@ import numpy as np
 import yaml
 
 from . import Sink
-from foosball.tracking import BallConfig
-from foosball.models import GoalConfig
+from ..detectors.color import BallConfig, GoalConfig
 
 GOAL = "goal"
 BALL = "ball"

@@ -20,7 +20,8 @@ GOAL_REQUEST = {
 
 main_args = {
     "webhook": True,
-    "headless": True
+    "headless": True,
+    "ball": "yellow"
 }
 
 

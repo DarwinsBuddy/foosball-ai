@@ -6,7 +6,7 @@ import signal
 
 from const import CALIBRATION_MODE, CALIBRATION_IMG_PATH, CALIBRATION_VIDEO, CALIBRATION_SAMPLE_SIZE, ARUCO_BOARD, \
     FILE, CAMERA_ID, FRAMERATE, OUTPUT, CAPTURE, DISPLAY, BALL, XPAD, YPAD, SCALE, VERBOSE, HEADLESS, OFF, \
-    MAX_PIPE_SIZE, INFO_VERBOSITY, GPU, AUDIO, WEBHOOK, BUFFER, BallPresets, CalibrationMode
+    MAX_PIPE_SIZE, INFO_VERBOSITY, GPU, AUDIO, WEBHOOK, BUFFER, BallPresets, CalibrationMode, GOAL_GRACE_PERIOD
 from foosball.arUcos.calibration import print_aruco_board, calibrate_camera
 from foosball.tracking.ai import AI
 
@@ -56,12 +56,17 @@ def get_argparse():
     io.add_argument("-cap", f"--{CAPTURE}", choices=['cv', 'gear'], default='gear', help="capture backend")
     io.add_argument("-d", f"--{DISPLAY}", choices=['cv', 'gear'], default='cv', help="display backend cv=direct display, gear=stream")
 
-    tracker = ap.add_argument_group(title="Tracker", description="Options for the ball/goal tracker")
-    tracker.add_argument("-ba", f"--{BALL}", choices=[BallPresets.YAML, BallPresets.ORANGE, BallPresets.YELLOW], default=BallPresets.YAML,
-                    help="Pre-configured ball color bounds. If 'yaml' is selected, a file called 'ball.yaml' "
-                         "(stored by hitting 's' in ball calibration mode) will be loaded as a preset."
-                         "If no file present fallback to 'yellow'")
-    tracker.add_argument("-b", f"--{BUFFER}", type=int, default=16, help="max track buffer size")
+    general = ap.add_argument_group(title="General", description="General options")
+    general.add_argument("-v", f"--{VERBOSE}", action='store_true', help="Verbose")
+    general.add_argument("-q", f"--{HEADLESS}", action='store_true', help="Disable visualizations")
+    general.add_argument("-o", f"--{OFF}", action='store_true', help="Disable ai")
+    general.add_argument("-p", f"--{MAX_PIPE_SIZE}", type=int, default=128, help="max pipe buffer size")
+    general.add_argument("-i", f"--{INFO_VERBOSITY}", type=int, help="Verbosity level of gui info box (default: None)",
+                         default=None)
+    general.add_argument("-g", f"--{GPU}", choices=['preprocess', 'tracker', 'render'], nargs='+', default=["render"],
+                         help="use GPU")
+    general.add_argument("-A", f"--{AUDIO}", action='store_true', help="Enable audio")
+    general.add_argument("-W", f"--{WEBHOOK}", action='store_true', help="Enable webhook")
 
     preprocess = ap.add_argument_group(title="Preprocessor", description="Options for the preprocessing step")
     preprocess.add_argument("-xp", f"--{XPAD}", type=int, default=50,
@@ -70,15 +75,18 @@ def get_argparse():
                     help="Vertical padding applied to ROI detected by aruco markers")
     preprocess.add_argument("-s", f"--{SCALE}", type=float, default=0.4, help="Scale stream")
 
-    general = ap.add_argument_group(title="General", description="General options")
-    general.add_argument("-v", f"--{VERBOSE}", action='store_true', help="Verbose")
-    general.add_argument("-q", f"--{HEADLESS}", action='store_true', help="Disable visualizations")
-    general.add_argument("-o", f"--{OFF}", action='store_true', help="Disable ai")
-    general.add_argument("-p", f"--{MAX_PIPE_SIZE}", type=int, default=128, help="max pipe buffer size")
-    general.add_argument("-i", f"--{INFO_VERBOSITY}", type=int, help="Verbosity level of gui info box (default: None)", default=None)
-    general.add_argument("-g", f"--{GPU}", choices=['preprocess', 'tracker', 'render'], nargs='+', default=["render"], help="use GPU")
-    general.add_argument("-A", f"--{AUDIO}", action='store_true', help="Enable audio")
-    general.add_argument("-W", f"--{WEBHOOK}", action='store_true', help="Enable webhook")
+    tracker = ap.add_argument_group(title="Tracker", description="Options for the ball/goal tracker")
+    tracker.add_argument("-ba", f"--{BALL}", choices=[BallPresets.YAML, BallPresets.ORANGE, BallPresets.YELLOW],
+                         default=BallPresets.YAML,
+                         help="Pre-configured ball color bounds. If 'yaml' is selected, a file called 'ball.yaml' "
+                              "(stored by hitting 's' in ball calibration mode) will be loaded as a preset."
+                              "If no file present fallback to 'yellow'")
+    tracker.add_argument("-b", f"--{BUFFER}", type=int, default=16, help="max track buffer size")
+
+    analyzer = ap.add_argument_group(title="Analyzer", description="Options for the analyzer")
+    analyzer.add_argument("-gc", f"--{GOAL_GRACE_PERIOD}", type=float,
+                          help="time in sec for a ball to disappear in a goal to be counted (default: 0.5)",
+                          default=0.5)
     return ap
 
 

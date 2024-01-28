@@ -30,7 +30,7 @@ def generate_frame_mask(width, height) -> Mask:
 
 class Tracking:
 
-    def __init__(self, stream, dims: FrameDimensions, goal_detector: GoalDetector, ball_detector: BallDetector, headless=False, maxPipeSize=128, calibrationMode=None, **kwargs):
+    def __init__(self, stream, dims: FrameDimensions, goal_detector: GoalDetector, ball_detector: BallDetector, headless=False, maxPipeSize=128, calibrationMode=None, goalGracePeriod=1.0, **kwargs):
         super().__init__()
         self.calibrationMode = calibrationMode
 
@@ -40,7 +40,7 @@ class Tracking:
         self.preprocessor = PreProcessor(dims, goal_detector, mask=mask, headless=headless, useGPU='preprocess' in gpu_flags,
                                          calibrationMode=calibrationMode, **kwargs)
         self.tracker = Tracker(ball_detector, useGPU='tracker' in gpu_flags, calibrationMode=calibrationMode, **kwargs)
-        self.analyzer = Analyzer(**kwargs)
+        self.analyzer = Analyzer(goal_grace_period_sec=goalGracePeriod, **kwargs)
         self.renderer = Renderer(dims, headless=headless, useGPU='render' in gpu_flags, **kwargs)
 
         self.stream = stream

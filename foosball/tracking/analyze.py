@@ -63,9 +63,8 @@ class Analyzer(BaseProcess):
         try:
             self.check_reset_score()
             now = dt.datetime.now()
-
+            # TODO: define goal grace period in seconds of runtime not seconds in rendering!
             no_track_sighting_in_grace_period = (now - self.last_track_sighting).total_seconds() >= self.goal_grace_period_sec if self.last_track_sighting is not None else None
-
             if not self.is_track_empty(track):
                 # track is not empty, so we save our state and remove a potential goal (which was wrongly tracked)
                 # case1: detected goals where not accurate => false positive
@@ -75,14 +74,12 @@ class Analyzer(BaseProcess):
             else:
                 # let's wait for track (s.a.), or we run out of grace period (down below)
                 # whatever happens first
-                if self.goal_candidate is not None:
-                    if self.last_track_sighting is not None and no_track_sighting_in_grace_period:
+                if self.goal_candidate is not None and self.last_track_sighting is not None and no_track_sighting_in_grace_period:
                         self.count_goal(self.goal_candidate)
                         self.goal_candidate = None
                 else:
                     # if track is empty, and we have no current goal candidate, check if there is one
                     self.goal_candidate = self.goal_shot(goals, track) if None not in [goals, track, self.last_track] else None
-
         except Exception as e:
             self.logger.error("Error in analyzer ", e)
             traceback.print_exc()

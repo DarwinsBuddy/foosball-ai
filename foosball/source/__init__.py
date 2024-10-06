@@ -10,7 +10,7 @@ from foosball.pipe.BaseProcess import Msg
 
 class Source(Thread):
 
-    def __init__(self, maxsize=128, skip_frames=True, timeout=2, *args, **kwargs):
+    def __init__(self, maxsize=128, skip_frames=True, timeout=2, seek_to_frame: int | None = None, *args, **kwargs):
         super().__init__(daemon=True, *args, **kwargs)
         # initialize the file video stream along with the boolean
         # used to indicate if the thread should be stopped or not
@@ -18,6 +18,7 @@ class Source(Thread):
         self.skip_frames = skip_frames
         self.skipped_frames = 0
         self.stopped = False
+        self.seek_to_frame = seek_to_frame
 
         # initialize the queue used to store frames read from
         # the video file
@@ -74,7 +75,10 @@ class Source(Thread):
                 print("Could not grab")
                 self.stopped = True
                 frame = None
-            self.send_frame(frame)
+            if self.seek_to_frame is not None and self.seek_to_frame >= 0:
+                self.seek_to_frame -= 1
+            else:
+                self.send_frame(frame)
         print("Release")
         self.close_capture()
 

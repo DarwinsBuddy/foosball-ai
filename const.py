@@ -23,6 +23,7 @@ INFO_VERBOSITY = "infoVerbosity"
 GPU = "gpu"
 AUDIO = "audio"
 WEBHOOK = "webhook"
+SEEK = "seek"
 
 
 class CalibrationMode:

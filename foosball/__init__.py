@@ -6,7 +6,7 @@ import signal
 
 from const import CALIBRATION_MODE, CALIBRATION_IMG_PATH, CALIBRATION_VIDEO, CALIBRATION_SAMPLE_SIZE, ARUCO_BOARD, \
     FILE, CAMERA_ID, FRAMERATE, OUTPUT, CAPTURE, DISPLAY, BALL, XPAD, YPAD, SCALE, VERBOSE, HEADLESS, OFF, \
-    MAX_PIPE_SIZE, INFO_VERBOSITY, GPU, AUDIO, WEBHOOK, BUFFER, BallPresets, CalibrationMode, GOAL_GRACE_PERIOD
+    MAX_PIPE_SIZE, INFO_VERBOSITY, GPU, AUDIO, WEBHOOK, BUFFER, BallPresets, CalibrationMode, GOAL_GRACE_PERIOD, SEEK
 from foosball.arUcos.calibration import print_aruco_board, calibrate_camera
 from foosball.tracking.ai import AI
 
@@ -67,6 +67,7 @@ def get_argparse():
                          help="use GPU")
     general.add_argument("-A", f"--{AUDIO}", action='store_true', help="Enable audio")
     general.add_argument("-W", f"--{WEBHOOK}", action='store_true', help="Enable webhook")
+    general.add_argument("-S", f"--{SEEK}", type=int, default=None, help="Seek to frame number")
 
     preprocess = ap.add_argument_group(title="Preprocessor", description="Options for the preprocessing step")
     preprocess.add_argument("-xp", f"--{XPAD}", type=int, default=50,
@@ -122,10 +123,10 @@ def main(kwargs):
         match kwargs.get(CAPTURE):
             case 'gear':
                 from .source.gear import GearSource
-                cap = GearSource(source, framerate=kwargs.get(FRAMERATE), resolution=(1280, 720))
+                cap = GearSource(source, framerate=kwargs.get(FRAMERATE), resolution=(1280, 720), seek_to_frame=kwargs.get(SEEK))
             case 'cv':
                 from .source.opencv import OpenCVSource
-                cap = OpenCVSource(source)
+                cap = OpenCVSource(source, seek_to_frame=kwargs.get(SEEK))
             case _:
                 return usage_and_exit()
         ai = AI(cap, dis, **kwargs)

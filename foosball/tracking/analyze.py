@@ -25,7 +25,6 @@ class Analyzer(BaseProcess):
         self.last_track_sighting: dt.datetime | None = None
         self.last_track: Optional[Track] = None
         self.goal_candidate = None
-        self.last_track_sighting = None
 
     @staticmethod
     def is_track_empty(track: Track):
@@ -75,9 +74,9 @@ class Analyzer(BaseProcess):
                 # let's wait for track (s.a.), or we run out of grace period (down below)
                 # whatever happens first
                 if self.goal_candidate is not None and self.last_track_sighting is not None and no_track_sighting_in_grace_period:
-                        self.count_goal(self.goal_candidate)
-                        self.goal_candidate = None
-                else:
+                    self.count_goal(self.goal_candidate)
+                    self.goal_candidate = None
+                elif self.goal_candidate is None:
                     # if track is empty, and we have no current goal candidate, check if there is one
                     self.goal_candidate = self.goal_shot(goals, track) if None not in [goals, track, self.last_track] else None
         except Exception as e:

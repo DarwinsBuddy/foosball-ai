@@ -1,19 +1,34 @@
 import abc
-import dataclasses
 import logging
 import multiprocessing
 import traceback
 import datetime as dt
 from queue import Empty, Full
+from dataclasses import dataclass
 
+from foosball.models import InfoLog, Result, R
 from foosball.pipe.Pipe import clear, SENTINEL
 
 
-@dataclasses.dataclass
+# TODO: check why merging into one Msg is having a huge impact on FPS
+@dataclass
 class Msg:
     args: list[any]
     kwargs: dict
+    info: InfoLog = None
     timestamp: dt.datetime = dt.datetime.now()
+
+    def add(self, name: str, data: any, info=InfoLog([])):
+        self.kwargs[name] = data
+        if self.info is not None:
+            self.info.concat(info)
+        else:
+            self.info = InfoLog([])
+
+    def remove(self, name) -> Result[R]:
+        return self.kwargs.pop(name)
+
+
 
     def __init__(self, args=None, kwargs=None, timestamp=dt.datetime.now()):
         if kwargs is None:

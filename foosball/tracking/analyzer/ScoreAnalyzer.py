@@ -3,25 +3,21 @@ import traceback
 from typing import Optional
 import datetime as dt
 
-from .. import hooks
-from ..hooks import generate_goal_webhook
-from ..models import Team, Goals, Score, AnalyzeResult, Track, Info, Verbosity
-from ..pipe.BaseProcess import BaseProcess, Msg
-from ..utils import contains
+from . import AbstractAnalyzer, ScoreAnalyzerResult, ScoreAnalyzerResultData
+from ...models import Team, Goals, Score, Track, Info, Verbosity, TrackerResult, InfoLog
+from ...utils import contains
 
 
-class Analyzer(BaseProcess):
+class ScoreAnalyzer(AbstractAnalyzer):
     def close(self):
         pass
 
-    def __init__(self, audio: bool = False, webhook: bool = False, goal_grace_period_sec: float = 1.0, *args, **kwargs):
-        super().__init__(name="Analyzer")
+    def __init__(self, goal_grace_period_sec: float = 1.0, *args, **kwargs):
+        super().__init__(name="ScoreAnalyzer")
         self.kwargs = kwargs
         self.goal_grace_period_sec = goal_grace_period_sec
         self.score = Score()
         self.score_reset = multiprocessing.Event()
-        self.audio = audio
-        self.webhook = webhook
         self.last_track_sighting: dt.datetime | None = None
         self.last_track: Optional[Track] = None
         self.goal_candidate = None
@@ -46,22 +42,14 @@ class Analyzer(BaseProcess):
             self.logger.error(f"Error {e}")
         return None
 
-    def call_hooks(self, team: Team) -> None:
-        if self.audio:
-            hooks.play_random_sound('goal')
-        if self.webhook:
-            hooks.webhook(generate_goal_webhook(team))
-
-    def process(self, msg: Msg) -> Msg:
-        track_result = msg.kwargs['result']
-        goals = track_result.goals
-        ball = track_result.ball
-        track = track_result.ball_track
-        frame = track_result.frame
-        info = track_result.info
+    def analyze(self, track_result: TrackerResult, timestamp: dt.datetime) -> ScoreAnalyzerResult:
+        goals = track_result.data.goals
+        track = track_result.data.ball_track
+        info = InfoLog([])
+        team_scored = None
         try:
             self.check_reset_score()
-            now = msg.timestamp  # take frame timestamp as now instead of dt.datetime.now (to prevent drift due to pushing/dragging pipeline)
+            now = timestamp  # take frame timestamp as now instead of dt.datetime.now (to prevent drift due to pushing/dragging pipeline)
             no_track_sighting_in_grace_period = (now - self.last_track_sighting).total_seconds() >= self.goal_grace_period_sec if self.last_track_sighting is not None else None
             if not self.is_track_empty(track):
                 # track is not empty, so we save our state and remove a potential goal (which was wrongly tracked)
@@ -74,6 +62,7 @@ class Analyzer(BaseProcess):
                 # whatever happens first
                 if self.goal_candidate is not None and self.last_track_sighting is not None and no_track_sighting_in_grace_period:
                     self.count_goal(self.goal_candidate)
+                    team_scored = self.goal_candidate
                     self.goal_candidate = None
                 elif self.goal_candidate is None:
                     # if track is empty, and we have no current goal candidate, check if there is one
@@ -83,7 +72,7 @@ class Analyzer(BaseProcess):
             traceback.print_exc()
         self.last_track = track
         info.append(Info(verbosity=Verbosity.INFO, title="Score", value=self.score.to_string()))
-        return Msg(timestamp=msg.timestamp, kwargs={"result": AnalyzeResult(score=self.score, ball=ball, goals=goals, frame=frame, info=info, ball_track=track)})
+        return ScoreAnalyzerResult(data=ScoreAnalyzerResultData(score=self.score, team_scored=team_scored), info=info)
 
     def check_reset_score(self):
         if self.score_reset.is_set():
@@ -92,9 +81,6 @@ class Analyzer(BaseProcess):
 
     def count_goal(self, team: Team):
         self.score.inc(team)
-        if team is not None:
-            self.logger.info(f"GOAL Team:{team} - {self.score.red} : {self.score.blue}")
-            self.call_hooks(team)
 
     def reset_score(self):
         self.score_reset.set()

@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from const import GPU, CalibrationMode
-from .analyze import Analyzer
+from .analyzer.analyze import Analyzer
 from .preprocess import PreProcessor
 from .render import Renderer
 from .tracker import Tracker

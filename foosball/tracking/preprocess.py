@@ -10,8 +10,8 @@ from const import CalibrationMode, OFF
 from ..arUcos import calibration
 from ..arUcos.models import Aruco
 from ..detectors.color import GoalDetector, GoalColorConfig
-from ..models import Frame, PreprocessResult, Point, Rect, Blob, Goals, FrameDimensions, ScaleDirection, \
-    InfoLog, Info, Verbosity
+from ..models import Frame, PreprocessorResult, Point, Rect, Blob, Goals, FrameDimensions, ScaleDirection, \
+    InfoLog, Info, Verbosity, PreprocessorResultData
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..pipe.Pipe import clear
 from ..utils import ensure_cpu, generate_processor_switches, relative_change, scale
@@ -44,7 +44,7 @@ class PreProcessor(BaseProcess):
                  redetect_markers_frames: int = 60, aruco_dictionary=cv2.aruco.DICT_4X4_1000,
                  aruco_params=cv2.aruco.DetectorParameters(), xpad: int = 50, ypad: int = 20,
                  goal_change_threshold: float = 0.10, useGPU: bool = False, calibrationMode=None, verbose=False, **kwargs):
-        super().__init__(name="Preprocess")
+        super().__init__(name="Preprocessor")
         self.dims = dims
         self.goal_change_threshold = goal_change_threshold
         self.redetect_markers_frame_threshold = redetect_markers_frames
@@ -147,7 +147,11 @@ class PreProcessor(BaseProcess):
         except Exception as e:
             self.logger.error(f"Error in preprocess {e}")
             traceback.print_exc()
-        return Msg(timestamp=msg.timestamp, kwargs={"result": PreprocessResult(self.iproc(frame), self.iproc(preprocessed), self.homography_matrix, self.goals, info)})
+        msg.add("Preprocessor", PreprocessorResult(
+            data=PreprocessorResultData(self.iproc(frame), self.iproc(preprocessed), self.homography_matrix, self.goals),
+            info=info
+        ))
+        return msg
 
     @staticmethod
     def corners2pt(corners) -> [int, int]:

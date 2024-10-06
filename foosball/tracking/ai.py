@@ -106,8 +106,8 @@ class AI:
                         self.logger.debug("received SENTINEL")
                         break
                     self.fps.update()
-                    frame = msg.kwargs['result']
-                    info: InfoLog = msg.kwargs['info']
+                    frame = msg.kwargs.get('Renderer', None)
+                    info: InfoLog = msg.info
                     self.fps.stop()
                     fps = int(self.fps.fps())
                     if not self.headless:

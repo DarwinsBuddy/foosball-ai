@@ -6,14 +6,14 @@ from queue import Empty
 from const import CalibrationMode
 from .preprocess import WarpMode, project_blob
 from ..detectors.color import BallColorDetector, BallColorConfig
-from ..models import TrackResult, Track, Info, Blob, Goals, InfoLog, Verbosity
+from ..models import TrackerResult, Track, Info, Blob, Goals, InfoLog, Verbosity, TrackerResultData
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..pipe.Pipe import clear
 from ..utils import generate_processor_switches
 logger = logging.getLogger(__name__)
 
 
-def log(result: TrackResult) -> None:
+def log(result: TrackerResult) -> None:
     logger.debug(result.info)
 
 
@@ -73,11 +73,13 @@ class Tracker(BaseProcess):
             self.bounds_in.put_nowait(config)
 
     def process(self, msg: Msg) -> Msg:
-        preprocess_result = msg.kwargs['result']
+        preprocess_result = msg.kwargs['Preprocessor']
+        data = preprocess_result.data
         ball = None
-        goals = preprocess_result.goals
+        goals = data.goals
         ball_track = None
         info = None
+        tracker_info = InfoLog([])
         try:
             if not self.off:
                 if self.calibration:
@@ -85,28 +87,29 @@ class Tracker(BaseProcess):
                         self.ball_detector.config = self.bounds_in.get_nowait()
                     except Empty:
                         pass
-                f = self.proc(preprocess_result.preprocessed if preprocess_result.preprocessed is not None else preprocess_result.original)
+                f = self.proc(data.preprocessed if data.preprocessed is not None else data.original)
                 ball_detection_result = self.ball_detector.detect(f)
                 ball = ball_detection_result.ball
                 # do not forget to project detected points onto the original frame on rendering
                 if not self.verbose:
-                    if ball is not None and preprocess_result.homography_matrix is not None:
-                        ball = project_blob(ball, preprocess_result.homography_matrix, WarpMode.DEWARP)
-                    if goals is not None and preprocess_result.homography_matrix is not None:
+                    if ball is not None and data.homography_matrix is not None:
+                        ball = project_blob(ball, data.homography_matrix, WarpMode.DEWARP)
+                    if goals is not None and data.homography_matrix is not None:
                         goals = Goals(
-                            left=project_blob(goals.left, preprocess_result.homography_matrix, WarpMode.DEWARP),
-                            right=project_blob(goals.right, preprocess_result.homography_matrix, WarpMode.DEWARP)
+                            left=project_blob(goals.left, data.homography_matrix, WarpMode.DEWARP),
+                            right=project_blob(goals.right, data.homography_matrix, WarpMode.DEWARP)
                         )
                 if self.calibration:
                     self.calibration_out.put_nowait(self.iproc(ball_detection_result.frame))
                     # copy deque, since we otherwise run into odd tracks displayed
                 ball_track = self.update_ball_track(ball).copy()
-            info = preprocess_result.info
-            info.concat(self.get_info(ball_track))
+            tracker_info = self.get_info(ball_track)
         except Exception as e:
             logger.error(f"Error in track {e}")
             traceback.print_exc()
+        # TODO: splitting into Preprocess and Tracker data maybe renders this obsolete
         if not self.verbose:
-            return Msg(timestamp=msg.timestamp, kwargs={"result": TrackResult(preprocess_result.original, goals, ball_track, ball, info)})
+            msg.add("Tracker", TrackerResult(data=TrackerResultData(data.original, goals, ball_track, ball), info=tracker_info))
         else:
-            return Msg(timestamp=msg.timestamp, kwargs={"result": TrackResult(preprocess_result.preprocessed, goals, ball_track, ball, info)})
+            msg.add("Tracker", TrackerResult(data=TrackerResultData(data.preprocessed, goals, ball_track, ball), info=tracker_info))
+        return msg

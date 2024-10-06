@@ -1,4 +1,5 @@
 import multiprocessing
+import datetime as dt
 from abc import abstractmethod
 from multiprocessing import Queue
 from queue import Full
@@ -53,8 +54,8 @@ class Source(Thread):
     def output(self) -> multiprocessing.Queue:
         return self.Q
 
-    def send_frame(self, frame) -> None:
-        msg = Msg(kwargs={'frame': frame}) if frame is not None else None
+    def send_frame(self, frame: Frame) -> None:
+        msg = Msg(timestamp=dt.datetime.now(), kwargs={'frame': frame}) if frame is not None else None
         while True:
             try:
                 # try to put it into the queue

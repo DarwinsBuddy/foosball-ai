@@ -1,5 +1,6 @@
 import collections
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from typing import Optional, Union
 
@@ -162,4 +163,4 @@ class PreprocessResult:
     preprocessed: Optional[CPUFrame]
     homography_matrix: Optional[np.ndarray]  # 3x3 matrix used to warp the image and project points
     goals: Optional[Goals]
-    info: Info
+    info: InfoLog

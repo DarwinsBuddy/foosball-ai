@@ -107,6 +107,6 @@ class Tracker(BaseProcess):
             logger.error(f"Error in track {e}")
             traceback.print_exc()
         if not self.verbose:
-            return Msg(kwargs={"result": TrackResult(preprocess_result.original, goals, ball_track, ball, info)})
+            return Msg(timestamp=msg.timestamp, kwargs={"result": TrackResult(preprocess_result.original, goals, ball_track, ball, info)})
         else:
-            return Msg(kwargs={"result": TrackResult(preprocess_result.preprocessed, goals, ball_track, ball, info)})
+            return Msg(timestamp=msg.timestamp, kwargs={"result": TrackResult(preprocess_result.preprocessed, goals, ball_track, ball, info)})

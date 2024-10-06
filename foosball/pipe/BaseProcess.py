@@ -3,6 +3,7 @@ import dataclasses
 import logging
 import multiprocessing
 import traceback
+import datetime as dt
 from queue import Empty, Full
 
 from foosball.pipe.Pipe import clear, SENTINEL
@@ -12,14 +13,16 @@ from foosball.pipe.Pipe import clear, SENTINEL
 class Msg:
     args: list[any]
     kwargs: dict
+    timestamp: dt.datetime = dt.datetime.now()
 
-    def __init__(self, args=None, kwargs=None):
+    def __init__(self, args=None, kwargs=None, timestamp=dt.datetime.now()):
         if kwargs is None:
             kwargs = dict()
         if args is None:
             args = list()
         self.kwargs = kwargs
         self.args = args
+        self.timestamp = timestamp
 
 
 class BaseProcess(multiprocessing.Process):

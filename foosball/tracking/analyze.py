@@ -61,8 +61,7 @@ class Analyzer(BaseProcess):
         info = track_result.info
         try:
             self.check_reset_score()
-            now = dt.datetime.now()
-            # TODO: define goal grace period in seconds of runtime not seconds in rendering!
+            now = msg.timestamp  # take frame timestamp as now instead of dt.datetime.now (to prevent drift due to pushing/dragging pipeline)
             no_track_sighting_in_grace_period = (now - self.last_track_sighting).total_seconds() >= self.goal_grace_period_sec if self.last_track_sighting is not None else None
             if not self.is_track_empty(track):
                 # track is not empty, so we save our state and remove a potential goal (which was wrongly tracked)
@@ -84,8 +83,7 @@ class Analyzer(BaseProcess):
             traceback.print_exc()
         self.last_track = track
         info.append(Info(verbosity=Verbosity.INFO, title="Score", value=self.score.to_string()))
-        return Msg(kwargs={"result": AnalyzeResult(score=self.score, ball=ball, goals=goals, frame=frame, info=info,
-                                                   ball_track=track)})
+        return Msg(timestamp=msg.timestamp, kwargs={"result": AnalyzeResult(score=self.score, ball=ball, goals=goals, frame=frame, info=info, ball_track=track)})
 
     def check_reset_score(self):
         if self.score_reset.is_set():

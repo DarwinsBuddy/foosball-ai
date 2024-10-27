@@ -90,11 +90,11 @@ class PreProcessor(BaseProcess):
         return frame if self.mask is None else cv2.bitwise_and(frame, frame, mask=self.mask)
 
     def process(self, msg: Msg) -> Msg:
-        frame = msg.kwargs['frame']
+        frame = msg.data['frame']
         frame = self.proc(frame)
         frame = scale(frame, self.dims, ScaleDirection.DOWN)
         preprocessed = frame
-        info: InfoLog = InfoLog(infos=[])
+        info: InfoLog = InfoLog()
         try:
             if self.goals_calibration:
                 try:

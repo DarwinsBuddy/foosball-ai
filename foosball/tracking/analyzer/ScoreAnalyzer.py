@@ -53,9 +53,9 @@ class ScoreAnalyzer(AbstractAnalyzer):
         return None
 
     def analyze(self, msg: Msg, timestamp: dt.datetime) -> [ScoreAnalyzerResult, InfoLog]:
-        goals = msg.kwargs["Tracker"].goals
-        track = msg.kwargs["Tracker"].ball_track
-        info = InfoLog([])
+        goals = msg.data["Tracker"].goals
+        track = msg.data["Tracker"].ball_track
+        info = InfoLog()
         team_scored = None
         try:
             self.check_reset_score()

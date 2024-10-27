@@ -56,7 +56,7 @@ class Source(Thread):
         return self.Q
 
     def send_frame(self, frame: Frame) -> None:
-        msg = Msg(timestamp=dt.datetime.now(), kwargs={'frame': frame}) if frame is not None else None
+        msg = Msg(timestamp=dt.datetime.now(), data={'frame': frame}) if frame is not None else None
         while True:
             try:
                 # try to put it into the queue

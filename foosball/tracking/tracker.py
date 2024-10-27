@@ -69,12 +69,12 @@ class Tracker(BaseProcess):
             self.bounds_in.put_nowait(config)
 
     def process(self, msg: Msg) -> Msg:
-        preprocess_result = msg.kwargs['Preprocessor']
+        preprocess_result = msg.data['Preprocessor']
         data = preprocess_result
         ball = None
         goals = data.goals
         ball_track = None
-        tracker_info = InfoLog([])
+        tracker_info = InfoLog()
         try:
             if not self.off:
                 if self.calibration:

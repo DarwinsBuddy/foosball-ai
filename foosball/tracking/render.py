@@ -111,8 +111,8 @@ class Renderer(BaseProcess):
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
 
     def process(self, msg: Msg) -> Msg:
-        score_analyzer = msg.kwargs["ScoreAnalyzer"]
-        tracker = msg.kwargs["Tracker"]
+        score_analyzer = msg.data["ScoreAnalyzer"]
+        tracker = msg.data["Tracker"]
         info: InfoLog = msg.info
         try:
             if not self.headless:
@@ -132,7 +132,7 @@ class Renderer(BaseProcess):
                 r_score(f, score, text_scale=1, thickness=4)
                 if self.infoVerbosity is not None:
                     r_info(f, shape, info.filter(self.infoVerbosity), text_scale=0.5, thickness=1)
-                msg.add("Renderer", RendererResult(frame=self.iproc(f)), info=InfoLog([]))
+                msg.add("Renderer", RendererResult(frame=self.iproc(f)), info=InfoLog())
         except Exception as e:
             logger.error(f"Error in renderer {e}")
             traceback.print_exc()

@@ -1,12 +1,12 @@
 import abc
+import datetime as dt
 import logging
 import multiprocessing
 import traceback
-import datetime as dt
-from queue import Empty, Full
 from dataclasses import dataclass
+from queue import Empty, Full
 
-from foosball.models import InfoLog, Result, R
+from foosball.models import InfoLog
 from foosball.pipe.Pipe import clear, SENTINEL
 
 
@@ -25,10 +25,8 @@ class Msg:
         else:
             self.info = InfoLog([])
 
-    def remove(self, name) -> Result[R]:
+    def remove(self, name) -> any:
         return self.kwargs.pop(name)
-
-
 
     def __init__(self, args=None, kwargs=None, timestamp=dt.datetime.now()):
         if kwargs is None:

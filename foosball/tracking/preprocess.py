@@ -11,7 +11,7 @@ from ..arUcos import calibration
 from ..arUcos.models import Aruco
 from ..detectors.color import GoalDetector, GoalColorConfig
 from ..models import Frame, PreprocessorResult, Point, Rect, Blob, Goals, FrameDimensions, ScaleDirection, \
-    InfoLog, Info, Verbosity, PreprocessorResultData
+    InfoLog, Info, Verbosity
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..pipe.Pipe import clear
 from ..utils import ensure_cpu, generate_processor_switches, relative_change, scale
@@ -147,10 +147,7 @@ class PreProcessor(BaseProcess):
         except Exception as e:
             self.logger.error(f"Error in preprocess {e}")
             traceback.print_exc()
-        msg.add("Preprocessor", PreprocessorResult(
-            data=PreprocessorResultData(self.iproc(frame), self.iproc(preprocessed), self.homography_matrix, self.goals),
-            info=info
-        ))
+        msg.add("Preprocessor", PreprocessorResult(original=self.iproc(frame), preprocessed=self.iproc(preprocessed), homography_matrix=self.homography_matrix, goals=self.goals), info=info)
         return msg
 
     @staticmethod

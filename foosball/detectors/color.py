@@ -134,6 +134,7 @@ class BallColorDetector(BallDetector[BallColorConfig]):
             return DetectedBall(ball=detected_blob, frame=detection_frame)
         else:
             logger.error("Ball Detection not possible. Config is None")
+            return DetectedBall(ball=None, frame=None)
 
 
 class GoalColorDetector(GoalDetector[GoalColorConfig]):

@@ -47,4 +47,4 @@ class GearSource(Source):
         width = int(self.gear.stream.stream.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.gear.stream.stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-        return [width, height]
+        return tuple((width, height))

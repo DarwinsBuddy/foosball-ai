@@ -1,17 +1,9 @@
 import logging
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from datetime import datetime
 
-from foosball.models import TrackerResult, Score, Team, Result
-
-@dataclass
-class ScoreAnalyzerResultData:
-    score: Score
-    team_scored: Team
-
-
-ScoreAnalyzerResult = Result[ScoreAnalyzerResultData]
+from foosball.models import InfoLog
+from foosball.pipe.BaseProcess import Msg
 
 
 class AbstractAnalyzer(ABC):
@@ -21,5 +13,9 @@ class AbstractAnalyzer(ABC):
         self.logger = logging.getLogger(name)
 
     @abstractmethod
-    def analyze(self, track_result: TrackerResult, timestamp: datetime) -> dict:
+    def analyze(self, msg: Msg, timestamp: datetime) -> [dict, InfoLog]:
+        pass
+
+    @abstractmethod
+    def reset(self):
         pass

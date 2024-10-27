@@ -24,4 +24,4 @@ class OpenCVSource(Source):
         width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-        return [width, height]
+        return tuple((width, height))

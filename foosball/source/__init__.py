@@ -4,6 +4,7 @@ from abc import abstractmethod
 from multiprocessing import Queue
 from queue import Full
 from threading import Thread
+from typing import Tuple
 
 from foosball.models import Frame
 from foosball.pipe.BaseProcess import Msg
@@ -88,7 +89,7 @@ class Source(Thread):
         pass
 
     @abstractmethod
-    def dim(self) -> [int, int]:
+    def dim(self) -> Tuple[int, int]:
         pass
 
     def stop(self):

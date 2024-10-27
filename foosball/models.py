@@ -1,8 +1,7 @@
 import collections
 from dataclasses import dataclass
-from typing import TypeVar
 from enum import Enum
-from typing import Optional, Union, Generic
+from typing import Optional, Union
 
 import cv2
 import numpy as np
@@ -79,7 +78,7 @@ class Blob:
 
 @dataclass
 class DetectedBall:
-    ball: Blob
+    ball: Optional[Blob]
     frame: np.array
 
 
@@ -138,32 +137,22 @@ class InfoLog:
         return " - ".join([i.to_string() for i in self.infos])
 
 
-R = TypeVar('R')
+@dataclass
+class TrackerResult:
+    frame: Frame
+    goals: Goals | None
+    ball_track: Track | None
+    ball: Blob | None
 
 
 @dataclass
-class Result(Generic[R]):
-    info: InfoLog
-    data: R
-
-
-@dataclass
-class TrackerResultData:
-    frame: CPUFrame
-    goals: Optional[Goals]
-    ball_track: Track
-    ball: Blob
-
-
-TrackerResult = Result[TrackerResultData]
-
-
-@dataclass
-class PreprocessorResultData:
-    original: CPUFrame
-    preprocessed: Optional[CPUFrame]
+class PreprocessorResult:
+    original: Frame
+    preprocessed: Optional[Frame]
     homography_matrix: Optional[np.ndarray]  # 3x3 matrix used to warp the image and project points
     goals: Optional[Goals]
 
 
-PreprocessorResult = Result[PreprocessorResultData]
+@dataclass
+class RendererResult:
+    frame: Optional[Frame]

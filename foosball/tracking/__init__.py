@@ -33,8 +33,7 @@ class Tracking:
     def __init__(self, stream, dims: FrameDimensions, goal_detector: GoalDetector, ball_detector: BallDetector, headless=False, maxPipeSize=128, calibrationMode=None, goalGracePeriod=1.0, **kwargs):
         super().__init__()
         self.calibrationMode = calibrationMode
-
-        width, height = dims.scaled
+        (width, height) = dims.scaled
         mask = generate_frame_mask(width, height)
         gpu_flags = kwargs.get(GPU)
         self.preprocessor = PreProcessor(dims, goal_detector, mask=mask, headless=headless, useGPU='preprocess' in gpu_flags,

@@ -1,6 +1,7 @@
 import logging
 import traceback
 from queue import Empty
+from typing import Tuple
 
 from imutils.video import FPS
 from vidgear.gears import WriteGear
@@ -35,8 +36,7 @@ class AI:
         original = self.source.dim()
         self.scale = kwargs.get(SCALE)
         scaled = self.scale_dim(original, self.scale)
-        self.dims = FrameDimensions(original, scaled, self.scale)
-
+        self.dims = FrameDimensions(original=original, scaled=scaled, scale=self.scale)
         self.goal_detector = GoalColorDetector(GoalColorConfig.preset())
         self.ball_detector = BallColorDetector(BallColorConfig.preset(kwargs.get(BALL)))
 
@@ -106,7 +106,8 @@ class AI:
                         self.logger.debug("received SENTINEL")
                         break
                     self.fps.update()
-                    frame = msg.kwargs.get('Renderer', None)
+                    result = msg.kwargs.get('Renderer', None)
+                    frame = result.frame if result is not None else None
                     info: InfoLog = msg.info
                     self.fps.stop()
                     fps = int(self.fps.fps())
@@ -167,9 +168,9 @@ class AI:
                 self.tracking.config_input(self.calibration.config)
 
     @staticmethod
-    def scale_dim(dim, scale_percent):
+    def scale_dim(dim, scale_percent) -> Tuple[int, int]:
 
         # calculate the percent of original dimensions
         width = int(dim[0] * scale_percent)
         height = int(dim[1] * scale_percent)
-        return [width, height]
+        return tuple((width, height))

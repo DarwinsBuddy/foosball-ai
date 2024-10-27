@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 from const import INFO_VERBOSITY
-from ..models import Goal, Score, FrameDimensions, Blob, InfoLog, Verbosity
+from ..models import Goal, Score, FrameDimensions, Blob, InfoLog, Verbosity, RendererResult
 from ..pipe.BaseProcess import Msg, BaseProcess
 from ..utils import generate_processor_switches
 logger = logging.getLogger(__name__)
@@ -98,6 +98,7 @@ def r_track(frame, ball_track, scale) -> None:
         thickness = max(1, int(int(np.sqrt(ball_track.maxlen / float(i + 1)) * 2) * scale))
         cv2.line(frame, ball_track[i - 1], ball_track[i], (b, g, r), thickness)
 
+
 class Renderer(BaseProcess):
     def close(self):
         pass
@@ -110,17 +111,17 @@ class Renderer(BaseProcess):
         [self.proc, self.iproc] = generate_processor_switches(useGPU)
 
     def process(self, msg: Msg) -> Msg:
-        goal_analyzer = msg.kwargs["ScoreAnalyzer"]
+        score_analyzer = msg.kwargs["ScoreAnalyzer"]
         tracker = msg.kwargs["Tracker"]
         info: InfoLog = msg.info
         try:
             if not self.headless:
-                shape = tracker.data.frame.shape
-                f = self.proc(tracker.data.frame)
-                ball = tracker.data.ball
-                goals = tracker.data.goals
-                track = tracker.data.ball_track
-                score = goal_analyzer.data.score
+                shape = tracker.frame.shape
+                f = self.proc(tracker.frame)
+                ball = tracker.ball
+                goals = tracker.goals
+                track = tracker.ball_track
+                score = score_analyzer.score
 
                 if ball is not None:
                     r_ball(f, ball)
@@ -131,7 +132,7 @@ class Renderer(BaseProcess):
                 r_score(f, score, text_scale=1, thickness=4)
                 if self.infoVerbosity is not None:
                     r_info(f, shape, info.filter(self.infoVerbosity), text_scale=0.5, thickness=1)
-                msg.add("Renderer", self.iproc(f), info=InfoLog([]))
+                msg.add("Renderer", RendererResult(frame=self.iproc(f)), info=InfoLog([]))
         except Exception as e:
             logger.error(f"Error in renderer {e}")
             traceback.print_exc()

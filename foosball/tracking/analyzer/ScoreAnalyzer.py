@@ -1,18 +1,27 @@
+import datetime as dt
 import multiprocessing
 import traceback
+from dataclasses import dataclass
 from typing import Optional
-import datetime as dt
 
-from . import AbstractAnalyzer, ScoreAnalyzerResult, ScoreAnalyzerResultData
-from ...models import Team, Goals, Score, Track, Info, Verbosity, TrackerResult, InfoLog
+from . import AbstractAnalyzer
+from ...hooks import AudioHook, Webhook
+from ...models import Team, Goals, Score, Track, Info, Verbosity, InfoLog
+from ...pipe.BaseProcess import Msg
 from ...utils import contains
+
+
+@dataclass
+class ScoreAnalyzerResult:
+    score: Score
+    team_scored: Team
 
 
 class ScoreAnalyzer(AbstractAnalyzer):
     def close(self):
         pass
 
-    def __init__(self, goal_grace_period_sec: float = 1.0, *args, **kwargs):
+    def __init__(self, goal_grace_period_sec: float = 1.0, audio: bool = False, webhook: bool = False, *args, **kwargs):
         super().__init__(name="ScoreAnalyzer")
         self.kwargs = kwargs
         self.goal_grace_period_sec = goal_grace_period_sec
@@ -21,6 +30,7 @@ class ScoreAnalyzer(AbstractAnalyzer):
         self.last_track_sighting: dt.datetime | None = None
         self.last_track: Optional[Track] = None
         self.goal_candidate = None
+        self.hooks = [AudioHook("goal"), Webhook.load_webhook('goal_webhook.yaml')]
 
     @staticmethod
     def is_track_empty(track: Track):
@@ -42,9 +52,9 @@ class ScoreAnalyzer(AbstractAnalyzer):
             self.logger.error(f"Error {e}")
         return None
 
-    def analyze(self, track_result: TrackerResult, timestamp: dt.datetime) -> ScoreAnalyzerResult:
-        goals = track_result.data.goals
-        track = track_result.data.ball_track
+    def analyze(self, msg: Msg, timestamp: dt.datetime) -> [ScoreAnalyzerResult, InfoLog]:
+        goals = msg.kwargs["Tracker"].goals
+        track = msg.kwargs["Tracker"].ball_track
         info = InfoLog([])
         team_scored = None
         try:
@@ -61,7 +71,7 @@ class ScoreAnalyzer(AbstractAnalyzer):
                 # let's wait for track (s.a.), or we run out of grace period (down below)
                 # whatever happens first
                 if self.goal_candidate is not None and self.last_track_sighting is not None and no_track_sighting_in_grace_period:
-                    self.count_goal(self.goal_candidate)
+                    self.count_goal(self.goal_candidate, timestamp)
                     team_scored = self.goal_candidate
                     self.goal_candidate = None
                 elif self.goal_candidate is None:
@@ -72,15 +82,23 @@ class ScoreAnalyzer(AbstractAnalyzer):
             traceback.print_exc()
         self.last_track = track
         info.append(Info(verbosity=Verbosity.INFO, title="Score", value=self.score.to_string()))
-        return ScoreAnalyzerResult(data=ScoreAnalyzerResultData(score=self.score, team_scored=team_scored), info=info)
+        return [ScoreAnalyzerResult(score=self.score, team_scored=team_scored), info]
 
     def check_reset_score(self):
         if self.score_reset.is_set():
             self.score.reset()
             self.score_reset.clear()
 
-    def count_goal(self, team: Team):
+    def count_goal(self, team: Team, timestamp: dt.datetime):
         self.score.inc(team)
+        for h in self.hooks:
+            try:
+                h.invoke({"team": team.value}, timestamp)
+            except Exception as e:
+                self.logger.error("Error in Analyzer - effects ")
+                print(e)
+                print(type(h))
+                traceback.print_exc()
 
-    def reset_score(self):
+    def reset(self):
         self.score_reset.set()

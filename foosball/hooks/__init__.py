@@ -4,70 +4,82 @@ import os
 import random
 import threading
 import traceback
-from typing import Mapping, Callable
+from abc import ABC, abstractmethod
+from typing import Mapping, Self
 
 import urllib3
 import yaml
 
-from foosball.models import Team
-
 logger = logging.getLogger(__name__)
 
 
-@dataclasses.dataclass
-class Webhook:
-    method: str
-    url: str
-    json: dict = None
-    headers: Mapping[str, str] = None
+class Hook(ABC):
+    @abstractmethod
+    def invoke(self, *args, **kwargs):
+        pass
 
 
-def load_goal_webhook() -> Callable[[Team], Webhook]:
-    filename = 'goal_webhook.yaml'
+class AudioHook(Hook):
 
-    def to_webhook(webhook_dict: dict, team: Team):
-        webhook_dict['json']['team'] = team.value
-        return Webhook(**webhook_dict)
-    if os.path.isfile(filename):
-        with open(filename, 'r') as f:
-            wh = yaml.safe_load(f)
-            return lambda team: to_webhook(wh, team)
-    else:
-        logger.info("No goal webhook configured under 'goal_webhook.yaml'")
+    def __init__(self, folder: str):
+        super().__init__()
+        self.folder = folder
 
+    def invoke(self, *args, **kwargs):
+        AudioHook.play_random_sound(self.folder)
 
-generate_goal_webhook = load_goal_webhook()
+    @staticmethod
+    def play_sound(sound_file: str):
+        from playsound import playsound
+        if os.path.isfile(sound_file):
+            playsound(sound_file, block=False)
+        else:
+            logger.warning(f"Audio not found: {sound_file}")
 
-
-def webhook(whook: Webhook):
-    threading.Thread(
-        target=_webhook,
-        args=[whook],
-        daemon=True
-    ).start()
-
-
-def _webhook(whook: Webhook):
-    try:
-        headers = {} if whook.headers is None else whook.headers
-        if whook.json is not None and "content-type" not in headers:
-            headers['content_type'] = 'application/json'
-        response = urllib3.request(whook.method, whook.url, json=whook.json, headers=headers)
-        logger.debug(f"webhook response: {response.status}")
-    except Exception as e:
-        logger.error(f"Webhook failed - {e}")
-        traceback.print_exc()
+    @staticmethod
+    def play_random_sound(folder: str, prefix: str = './assets/audio'):
+        path = f'{prefix}/{folder}'
+        audio_file = random.choice(os.listdir(path))
+        AudioHook.play_sound(f"{path}/{audio_file}")
 
 
-def play_random_sound(folder: str, prefix: str = './assets/audio'):
-    path = f'{prefix}/{folder}'
-    audio_file = random.choice(os.listdir(path))
-    play_sound(f"{path}/{audio_file}")
+class Webhook(Hook):
+    def __init__(self, method: str = None, url: str = None, json: dict = None, headers: Mapping[str, str] = None, *args, **kwargs):
+        self.method: str = method
+        self.url: str = url
+        self.json: dict = json
+        self.headers: Mapping[str, str] = headers
 
+    def as_dict(self, json: dict = None) -> dict:
+        d = vars(self)
+        if json is not None:
+            d['json'] = d['json'] | json
+        return d
 
-def play_sound(sound_file: str):
-    from playsound import playsound
-    if os.path.isfile(sound_file):
-        playsound(sound_file, block=False)
-    else:
-        logger.warning(f"Audio not found: {sound_file}")
+    def invoke(self, json: dict, *args, **kwargs):
+        threading.Thread(
+            target=Webhook.call,
+            kwargs=self.as_dict(json),
+            daemon=True
+        ).start()
+
+    @staticmethod
+    def call(method: str, url: str, json: dict = None, headers: Mapping[str, str] = None):
+        try:
+            headers = {} if headers is None else headers
+            if json is not None and "content-type" not in headers:
+                headers['content_type'] = 'application/json'
+            response = urllib3.request(method, url, json=json, headers=headers)
+            logger.debug(f"webhook response: {response.status}")
+        except Exception as e:
+            logger.error(f"Webhook failed - {e}")
+            traceback.print_exc()
+
+    @classmethod
+    def load_webhook(cls, filename: str) -> Self:
+        if os.path.isfile(filename):
+            with open(filename, 'r') as f:
+                wh = yaml.safe_load(f)
+                return Webhook(**wh)
+        else:
+            logger.info("No goal webhook configured under 'goal_webhook.yaml'")

@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 from const import INFO_VERBOSITY
-from ..models import Goal, Score, FrameDimensions, Blob, InfoLog, Verbosity, RendererResult
+from ..models import Goal, Score, FrameDimensions, Blob, Verbosity, RendererResult, Info, infos_to_string, filter_info
 from ..pipe.BaseProcess import Msg, BaseProcess
 from ..utils import generate_processor_switches
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ def text_color(key, value):
         return GREEN
 
 
-def r_info(frame, shape: tuple[int, int, int], info: InfoLog, text_scale=1.0, thickness=1) -> None:
+def r_info(frame, shape: tuple[int, int, int], info: [Info], text_scale=1.0, thickness=1) -> None:
     [height, width, channels] = shape
     # loop over the info tuples and draw them on our frame
     x = 0
@@ -113,7 +113,7 @@ class Renderer(BaseProcess):
     def process(self, msg: Msg) -> Msg:
         score_analyzer = msg.data["ScoreAnalyzer"]
         tracker = msg.data["Tracker"]
-        info: InfoLog = msg.info
+        info: [Info] = msg.info
         try:
             if not self.headless:
                 shape = tracker.frame.shape
@@ -131,8 +131,10 @@ class Renderer(BaseProcess):
                 r_track(f, track, self.dims.scale)
                 r_score(f, score, text_scale=1, thickness=4)
                 if self.infoVerbosity is not None:
-                    r_info(f, shape, info.filter(self.infoVerbosity), text_scale=0.5, thickness=1)
-                msg.add("Renderer", RendererResult(frame=self.iproc(f)), info=InfoLog())
+                    r_info(f, shape, filter_info(info, self.infoVerbosity), text_scale=0.5, thickness=1)
+                return Msg(msg=msg, info=None, data={
+                    "Renderer": RendererResult(frame=self.iproc(f))
+                })
         except Exception as e:
             logger.error(f"Error in renderer {e}")
             traceback.print_exc()

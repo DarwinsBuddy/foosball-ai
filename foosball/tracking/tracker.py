@@ -6,7 +6,7 @@ from queue import Empty
 from const import CalibrationMode
 from .preprocess import WarpMode, project_blob
 from ..detectors.color import BallColorDetector, BallColorConfig
-from ..models import TrackerResult, Track, Info, Blob, Goals, InfoLog, Verbosity
+from ..models import TrackerResult, Track, Info, Blob, Goals, Verbosity
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..pipe.Pipe import clear
 from ..utils import generate_processor_switches
@@ -46,12 +46,12 @@ class Tracker(BaseProcess):
             self.ball_track.appendleft(None)
         return self.ball_track
 
-    def get_info(self, ball_track: Track) -> InfoLog:
-        info = InfoLog(infos=[
+    def get_info(self, ball_track: Track) -> [Info]:
+        info = [
             Info(verbosity=Verbosity.DEBUG, title="Track length", value=f"{str(sum([1 for p in ball_track or [] if p is not None])).rjust(2, ' ')}"),
             Info(verbosity=Verbosity.TRACE, title="Calibration", value=f"{self.calibrationMode if self.calibrationMode is not None else 'off'}"),
             Info(verbosity=Verbosity.TRACE, title="Tracker", value=f"{'off' if self.off else 'on'}")
-        ])
+        ]
         if self.calibration:
             [lower, upper] = self.ball_detector.config.bounds
             info.append(Info(verbosity=Verbosity.TRACE, title="lower", value=f'({",".join(map(str,lower))})'))
@@ -74,7 +74,7 @@ class Tracker(BaseProcess):
         ball = None
         goals = data.goals
         ball_track = None
-        tracker_info = InfoLog()
+        tracker_info = []
         try:
             if not self.off:
                 if self.calibration:
@@ -104,7 +104,6 @@ class Tracker(BaseProcess):
             traceback.print_exc()
         # TODO: splitting into Preprocess and Tracker data maybe renders this obsolete
         if not self.verbose:
-            msg.add("Tracker", TrackerResult(frame=data.original, goals=goals, ball_track=ball_track, ball=ball), info=tracker_info)
+            return Msg(msg=msg, info=tracker_info, data={"Tracker": TrackerResult(frame=data.original, goals=goals, ball_track=ball_track, ball=ball)})
         else:
-            msg.add("Tracker", TrackerResult(frame=data.preprocessed, goals=goals, ball_track=ball_track, ball=ball), info=tracker_info)
-        return msg
+            return Msg(msg=msg, info=tracker_info, data={"Tracker": TrackerResult(frame=data.preprocessed, goals=goals, ball_track=ball_track, ball=ball)})

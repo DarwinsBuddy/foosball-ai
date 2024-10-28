@@ -1,8 +1,6 @@
 import traceback
 
 from .ScoreAnalyzer import ScoreAnalyzer
-from ... import hooks
-from ...models import Team
 from ...pipe.BaseProcess import BaseProcess, Msg
 
 
@@ -23,11 +21,14 @@ class Analyzer(BaseProcess):
                 a.reset()
 
     def process(self, msg: Msg) -> Msg:
+        results = {}
+        infos = []
         for a in self.analyzers:
             try:
                 [result, info] = a.analyze(msg, msg.timestamp)
-                msg.add(a.name, result, info=info)
+                results[a.name] = result
+                infos.extend(info)
             except Exception as e:
                 self.logger.error("Error in Analyzer - analyzers ", e)
                 traceback.print_exc()
-        return msg
+        return Msg(msg=msg, info=infos, data=results)

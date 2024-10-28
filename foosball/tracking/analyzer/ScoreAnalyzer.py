@@ -6,7 +6,7 @@ from typing import Optional
 
 from . import AbstractAnalyzer
 from ...hooks import AudioHook, Webhook
-from ...models import Team, Goals, Score, Track, Info, Verbosity, InfoLog
+from ...models import Team, Goals, Score, Track, Info, Verbosity, Info
 from ...pipe.BaseProcess import Msg
 from ...utils import contains
 
@@ -52,10 +52,9 @@ class ScoreAnalyzer(AbstractAnalyzer):
             self.logger.error(f"Error {e}")
         return None
 
-    def analyze(self, msg: Msg, timestamp: dt.datetime) -> [ScoreAnalyzerResult, InfoLog]:
+    def analyze(self, msg: Msg, timestamp: dt.datetime) -> [ScoreAnalyzerResult, [Info]]:
         goals = msg.data["Tracker"].goals
         track = msg.data["Tracker"].ball_track
-        info = InfoLog()
         team_scored = None
         try:
             self.check_reset_score()
@@ -81,8 +80,10 @@ class ScoreAnalyzer(AbstractAnalyzer):
             self.logger.error("Error in analyzer ", e)
             traceback.print_exc()
         self.last_track = track
-        info.append(Info(verbosity=Verbosity.INFO, title="Score", value=self.score.to_string()))
-        return [ScoreAnalyzerResult(score=self.score, team_scored=team_scored), info]
+        return [
+            ScoreAnalyzerResult(score=self.score, team_scored=team_scored),
+            [Info(verbosity=Verbosity.INFO, title="Score", value=self.score.to_string())]
+        ]
 
     def check_reset_score(self):
         if self.score_reset.is_set():

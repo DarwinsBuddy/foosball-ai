@@ -10,7 +10,7 @@ from const import HEADLESS, CALIBRATION_MODE, INFO_VERBOSITY, OUTPUT, Calibratio
 from . import Tracking
 from .render import r_text, BLACK
 from ..detectors.color import GoalColorConfig, BallColorDetector, BallColorConfig, GoalColorDetector
-from ..models import FrameDimensions, Frame, InfoLog, Verbosity
+from ..models import FrameDimensions, Frame, Verbosity, Info, filter_info, infos_to_string
 from ..sink.opencv import DisplaySink, Key, BallColorCalibration, GoalColorCalibration
 from ..source import Source
 
@@ -108,7 +108,7 @@ class AI:
                     self.fps.update()
                     result = msg.data.get('Renderer', None)
                     frame = result.frame if result is not None else None
-                    info: InfoLog = msg.info
+                    info: [Info] = msg.info
                     self.fps.stop()
                     fps = int(self.fps.fps())
                     if not self.headless:
@@ -122,7 +122,7 @@ class AI:
                             break
                     else:
                         print(
-                            f"{info.filter(self.infoVerbosity).to_string() if self.infoVerbosity is not None else ''} - FPS: {fps} {BLANKS}",
+                            f"{infos_to_string(filter_info(info, self.infoVerbosity)) if self.infoVerbosity is not None else ''} - FPS: {fps} {BLANKS}",
                             end="\r")
                 except Empty:
                     # logger.debug("No new frame")

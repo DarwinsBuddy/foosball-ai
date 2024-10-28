@@ -116,24 +116,11 @@ class Info:
         return f'{self.title} {self.value}'
 
 
-class InfoLog:
-    def __init__(self, infos=None):
-        self.infos: [Info] = [] if infos is None else infos
+def filter_info(infos: [Info], infoVerbosity: Verbosity = Verbosity.TRACE) -> [Info]:
+    return [i for i in infos if infoVerbosity is not None and infoVerbosity.value <= i.verbosity.value]
 
-    def __iter__(self):
-        return (i for i in self.infos)
-
-    def append(self, info: Info):
-        self.infos.append(info)
-
-    def extend(self, info_log):
-        self.infos.extend(info_log.infos)
-
-    def filter(self, infoVerbosity: Verbosity = Verbosity.TRACE) -> [Info]:
-        return [i for i in self.infos if infoVerbosity is not None and infoVerbosity.value <= i.verbosity.value]
-
-    def to_string(self):
-        return " - ".join([i.to_string() for i in self.infos])
+def infos_to_string(infos: [Info]):
+    return " - ".join([i.to_string() for i in infos])
 
 
 @dataclass

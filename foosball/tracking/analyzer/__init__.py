@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-from foosball.models import InfoLog
+from foosball.models import Info
 from foosball.pipe.BaseProcess import Msg
 
 
@@ -13,7 +13,7 @@ class AbstractAnalyzer(ABC):
         self.logger = logging.getLogger(name)
 
     @abstractmethod
-    def analyze(self, msg: Msg, timestamp: datetime) -> [dict, InfoLog]:
+    def analyze(self, msg: Msg, timestamp: datetime) -> [dict, [Info]]:
         pass
 
     @abstractmethod

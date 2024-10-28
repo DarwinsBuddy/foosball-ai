@@ -6,7 +6,7 @@ import traceback
 from dataclasses import dataclass
 from queue import Empty, Full
 
-from foosball.models import InfoLog
+from foosball.models import Info
 from foosball.pipe.Pipe import clear, SENTINEL
 
 
@@ -14,32 +14,17 @@ from foosball.pipe.Pipe import clear, SENTINEL
 @dataclass
 class Msg:
     data: dict
-    info: InfoLog
+    info: [Info]
     timestamp: dt.datetime = dt.datetime.now()
 
-    def __init__(self, data=None, info=InfoLog(), timestamp=dt.datetime.now()):
+    def __init__(self, data=None, info:[Info] = None, timestamp=dt.datetime.now(), msg: "Msg" = None):
         if data is None:
             data = dict()
-        self.data = data
-        self.info = info
+        if info is None:
+            info = list()
+        self.data = {**(msg.data if msg is not None else {}), **data}
+        self.info = (msg.info if msg is not None else []) + info
         self.timestamp = timestamp
-
-    def __getitem__(self, key):
-        return self.data[key]
-
-    def __setitem__(self, key, value):
-        self.data[key] = value
-
-    def add(self, name: str, data: any, info: InfoLog = None):
-        self.data[name] = data
-        info_log = InfoLog() if info is None else info
-        if self.info is not None:
-            self.info.extend(info_log)
-        else:
-            self.info = InfoLog()
-
-    def remove(self, name) -> any:
-        return self.data.pop(name)
 
 
 class BaseProcess(multiprocessing.Process):

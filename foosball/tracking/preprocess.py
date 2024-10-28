@@ -1,3 +1,4 @@
+import timeit
 import traceback
 from enum import Enum
 from multiprocessing import Queue
@@ -11,7 +12,7 @@ from ..arUcos import calibration
 from ..arUcos.models import Aruco
 from ..detectors.color import GoalDetector, GoalColorConfig
 from ..models import Frame, PreprocessorResult, Point, Rect, Blob, Goals, FrameDimensions, ScaleDirection, \
-    InfoLog, Info, Verbosity
+    Info, Verbosity
 from ..pipe.BaseProcess import BaseProcess, Msg
 from ..pipe.Pipe import clear
 from ..utils import ensure_cpu, generate_processor_switches, relative_change, scale
@@ -94,7 +95,7 @@ class PreProcessor(BaseProcess):
         frame = self.proc(frame)
         frame = scale(frame, self.dims, ScaleDirection.DOWN)
         preprocessed = frame
-        info: InfoLog = InfoLog()
+        info: [Info] = []
         try:
             if self.goals_calibration:
                 try:
@@ -147,8 +148,9 @@ class PreProcessor(BaseProcess):
         except Exception as e:
             self.logger.error(f"Error in preprocess {e}")
             traceback.print_exc()
-        msg.add("Preprocessor", PreprocessorResult(original=self.iproc(frame), preprocessed=self.iproc(preprocessed), homography_matrix=self.homography_matrix, goals=self.goals), info=info)
-        return msg
+        return Msg(msg=msg, info=info, data={
+            "Preprocessor": PreprocessorResult(original=self.iproc(frame), preprocessed=self.iproc(preprocessed), homography_matrix=self.homography_matrix, goals=self.goals)
+        })
 
     @staticmethod
     def corners2pt(corners) -> [int, int]:

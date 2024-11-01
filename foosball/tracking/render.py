@@ -132,7 +132,7 @@ class Renderer(BaseProcess):
                 r_score(f, score, text_scale=1, thickness=4)
                 if self.infoVerbosity is not None:
                     r_info(f, shape, filter_info(info, self.infoVerbosity), text_scale=0.5, thickness=1)
-                return Msg(msg=msg, info=None, data={
+                return Msg(info=None, data={
                     "Renderer": RendererResult(frame=self.iproc(f))
                 })
         except Exception as e:

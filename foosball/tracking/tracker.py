@@ -102,8 +102,8 @@ class Tracker(BaseProcess):
         except Exception as e:
             logger.error(f"Error in track {e}")
             traceback.print_exc()
-        # TODO: splitting into Preprocess and Tracker data maybe renders this obsolete
+        # Not passing original msg due to performance impact (copying whole frames, etc.)
         if not self.verbose:
-            return Msg(msg=msg, info=tracker_info, data={"Tracker": TrackerResult(frame=data.original, goals=goals, ball_track=ball_track, ball=ball)})
+            return Msg(info=tracker_info, data={"Tracker": TrackerResult(frame=data.original, goals=goals, ball_track=ball_track, ball=ball)})
         else:
-            return Msg(msg=msg, info=tracker_info, data={"Tracker": TrackerResult(frame=data.preprocessed, goals=goals, ball_track=ball_track, ball=ball)})
+            return Msg(info=tracker_info, data={"Tracker": TrackerResult(frame=data.preprocessed, goals=goals, ball_track=ball_track, ball=ball)})

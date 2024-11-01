@@ -1,16 +1,12 @@
-import dataclasses
 import logging
 import os
 import random
 import threading
-import traceback
 from abc import ABC, abstractmethod
 from typing import Mapping, Self
 
 import urllib3
 import yaml
-
-logger = logging.getLogger(__name__)
 
 
 class Hook(ABC):
@@ -34,7 +30,7 @@ class AudioHook(Hook):
         if os.path.isfile(sound_file):
             playsound(sound_file, block=False)
         else:
-            logger.warning(f"Audio not found: {sound_file}")
+            logging.warning(f"Audio not found: {sound_file}")
 
     @staticmethod
     def play_random_sound(folder: str, prefix: str = './assets/audio'):
@@ -44,7 +40,9 @@ class AudioHook(Hook):
 
 
 class Webhook(Hook):
+
     def __init__(self, method: str = None, url: str = None, json: dict = None, headers: Mapping[str, str] = None, *args, **kwargs):
+        super().__init__()
         self.method: str = method
         self.url: str = url
         self.json: dict = json
@@ -70,10 +68,9 @@ class Webhook(Hook):
             if json is not None and "content-type" not in headers:
                 headers['content_type'] = 'application/json'
             response = urllib3.request(method, url, json=json, headers=headers)
-            logger.debug(f"webhook response: {response.status}")
+            logging.debug(f"webhook response: {response.status}")
         except Exception as e:
-            logger.error(f"Webhook failed - {e}")
-            traceback.print_exc()
+            logging.error(f"Webhook failed - {e}")
 
     @classmethod
     def load_webhook(cls, filename: str) -> Self:
@@ -82,4 +79,4 @@ class Webhook(Hook):
                 wh = yaml.safe_load(f)
                 return Webhook(**wh)
         else:
-            logger.info("No goal webhook configured under 'goal_webhook.yaml'")
+            logging.info("No goal webhook configured under 'goal_webhook.yaml'")

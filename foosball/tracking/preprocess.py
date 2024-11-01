@@ -148,7 +148,8 @@ class PreProcessor(BaseProcess):
         except Exception as e:
             self.logger.error(f"Error in preprocess {e}")
             traceback.print_exc()
-        return Msg(msg=msg, info=info, data={
+        # Not passing original msg due to performance impact (copying whole frames, etc.)
+        return Msg(info=info, data={
             "Preprocessor": PreprocessorResult(original=self.iproc(frame), preprocessed=self.iproc(preprocessed), homography_matrix=self.homography_matrix, goals=self.goals)
         })
 

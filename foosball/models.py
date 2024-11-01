@@ -1,7 +1,7 @@
 import collections
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Union
+from typing import Union
 
 import cv2
 import numpy as np
@@ -76,12 +76,6 @@ class Blob:
         return w * h
 
 
-@dataclass
-class DetectedBall:
-    ball: Optional[Blob]
-    frame: np.array
-
-
 Goal = Blob
 
 
@@ -89,12 +83,6 @@ Goal = Blob
 class Goals:
     left: Goal
     right: Goal
-
-
-@dataclass
-class DetectedGoals:
-    goals: Optional[Goals]
-    frame: np.array
 
 
 Track = collections.deque
@@ -123,22 +111,3 @@ def infos_to_string(infos: [Info]):
     return " - ".join([i.to_string() for i in infos])
 
 
-@dataclass
-class TrackerResult:
-    frame: Frame
-    goals: Goals | None
-    ball_track: Track | None
-    ball: Blob | None
-
-
-@dataclass
-class PreprocessorResult:
-    original: Frame
-    preprocessed: Optional[Frame]
-    homography_matrix: Optional[np.ndarray]  # 3x3 matrix used to warp the image and project points
-    goals: Optional[Goals]
-
-
-@dataclass
-class RendererResult:
-    frame: Optional[Frame]

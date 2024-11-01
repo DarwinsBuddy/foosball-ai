@@ -8,8 +8,8 @@ import numpy as np
 import yaml
 
 from const import BallPresets
-from . import BallDetector, GoalDetector
-from ..models import Frame, DetectedGoals, Point, Goal, Blob, Goals, DetectedBall, HSV, rgb2hsv
+from . import BallDetector, GoalDetector, DetectedGoals, DetectedBall
+from ..models import Frame, Point, Goal, Blob, Goals, HSV, rgb2hsv
 
 logger = logging.getLogger(__name__)
 

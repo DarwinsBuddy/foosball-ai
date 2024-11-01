@@ -5,9 +5,10 @@ import cv2
 import numpy as np
 
 from const import INFO_VERBOSITY
-from ..models import Goal, Score, FrameDimensions, Blob, Verbosity, RendererResult, Info, infos_to_string, filter_info
-from ..pipe.BaseProcess import Msg, BaseProcess
-from ..utils import generate_processor_switches
+from .models import RendererResult
+from ...models import Goal, Score, FrameDimensions, Blob, Verbosity, Info, filter_info
+from ...pipe.BaseProcess import Msg, BaseProcess
+from ...utils import generate_processor_switches
 logger = logging.getLogger(__name__)
 
 

@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 from . import AbstractAnalyzer
-from ...hooks import AudioHook, Webhook
+from ...hooks.web import Webhook
+from ...hooks.audio import AudioHook
 from ...models import Team, Goals, Score, Track, Info, Verbosity, Info
 from ...pipe.BaseProcess import Msg
 from ...utils import contains

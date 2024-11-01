@@ -1,4 +1,3 @@
-import timeit
 import traceback
 from enum import Enum
 from multiprocessing import Queue
@@ -8,14 +7,15 @@ import cv2
 import numpy as np
 
 from const import CalibrationMode, OFF
-from ..arUcos import calibration
-from ..arUcos.models import Aruco
-from ..detectors.color import GoalDetector, GoalColorConfig
-from ..models import Frame, PreprocessorResult, Point, Rect, Blob, Goals, FrameDimensions, ScaleDirection, \
+from .models import PreprocessorResult
+from ...arUcos import calibration
+from ...arUcos.models import Aruco
+from ...detectors.color import GoalDetector, GoalColorConfig
+from ...models import Frame, Point, Rect, Blob, Goals, FrameDimensions, ScaleDirection, \
     Info, Verbosity
-from ..pipe.BaseProcess import BaseProcess, Msg
-from ..pipe.Pipe import clear
-from ..utils import ensure_cpu, generate_processor_switches, relative_change, scale
+from ...pipe.BaseProcess import BaseProcess, Msg
+from ...pipe.Pipe import clear
+from ...utils import ensure_cpu, generate_processor_switches, relative_change, scale
 
 TEXT_SCALE = 0.8
 TEXT_COLOR = (0, 255, 0)

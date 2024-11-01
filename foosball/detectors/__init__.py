@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import TypeVar, Generic
 
-from foosball.models import Frame, DetectedBall, DetectedGoals
+from foosball.models import Frame
+from foosball.detectors.models import DetectedGoals, DetectedBall
 
 DetectorResult = TypeVar('DetectorResult')
 DetectorConfig = TypeVar('DetectorConfig')

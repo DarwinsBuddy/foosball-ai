@@ -4,12 +4,13 @@ from multiprocessing import Queue
 from queue import Empty
 
 from const import CalibrationMode
-from .preprocess import WarpMode, project_blob
-from ..detectors.color import BallColorDetector, BallColorConfig
-from ..models import TrackerResult, Track, Info, Blob, Goals, Verbosity
-from ..pipe.BaseProcess import BaseProcess, Msg
-from ..pipe.Pipe import clear
-from ..utils import generate_processor_switches
+from .models import TrackerResult
+from ..preprocess import WarpMode, project_blob
+from ...detectors.color import BallColorDetector, BallColorConfig
+from ...models import Track, Info, Blob, Goals, Verbosity
+from ...pipe.BaseProcess import BaseProcess, Msg
+from ...pipe.Pipe import clear
+from ...utils import generate_processor_switches
 logger = logging.getLogger(__name__)
 
 

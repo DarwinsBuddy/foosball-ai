@@ -1,7 +1,7 @@
 import logging
 import os
 import threading
-from typing import Mapping, Self
+from typing import Mapping
 
 import urllib3
 import yaml
@@ -43,7 +43,7 @@ class Webhook(Hook):
             logging.error(f"Webhook failed - {e}")
 
     @classmethod
-    def load_webhook(cls, filename: str) -> Self:
+    def load_webhook(cls, filename: str):
         if os.path.isfile(filename):
             with open(filename, 'r') as f:
                 wh = yaml.safe_load(f)

@@ -7,7 +7,7 @@ from typing import Optional
 from . import AbstractAnalyzer
 from ...hooks.web import Webhook
 from ...hooks.audio import AudioHook
-from ...models import Team, Goals, Score, Track, Info, Verbosity, Info
+from ...models import Team, Goals, Score, Track, Verbosity, Info
 from ...pipe.BaseProcess import Msg
 from ...utils import contains
 

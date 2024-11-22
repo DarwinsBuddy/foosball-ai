@@ -11,6 +11,12 @@ class AudioHook(Hook):
         super().__init__()
         self.folder = folder
 
+    def start(self, *args, **kwargs):
+        pass
+
+    def stop(self, *args, **kwargs):
+        pass
+
     def invoke(self, *args, **kwargs):
         AudioHook.play_random_sound(self.folder)
 

@@ -7,3 +7,4 @@ PyGObject==3.48.2
 PyYAML==6.0.2
 tqdm==4.66.5
 vidgear==0.3.3
+pyzmq==26.2.0

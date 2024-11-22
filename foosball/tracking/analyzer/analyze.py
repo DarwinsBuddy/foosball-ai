@@ -8,12 +8,10 @@ class Analyzer(BaseProcess):
     def close(self):
         pass
 
-    def __init__(self, audio: bool = False, webhook: bool = False, goal_grace_period_sec: float = 1.0, *args, **kwargs):
+    def __init__(self, goal_grace_period_sec: float = 1.0, *args, **kwargs):
         super().__init__(name="Analyzer")
         self.kwargs = kwargs
-        self.analyzers = [ScoreAnalyzer(goal_grace_period_sec, audio, webhook, args, kwargs)]
-        self.audio = audio
-        self.webhook = webhook
+        self.analyzers = [ScoreAnalyzer(goal_grace_period_sec, args, kwargs)]
 
     def reset_score(self):
         for a in self.analyzers:

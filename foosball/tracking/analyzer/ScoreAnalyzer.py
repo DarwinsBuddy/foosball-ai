@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 from . import AbstractAnalyzer
-from ...hooks.web import Webhook
+from ...hooks.zmq import ZMQHook
+from ...hooks.webhook import Webhook
 from ...hooks.audio import AudioHook
 from ...models import Team, Goals, Score, Track, Verbosity, Info
 from ...pipe.BaseProcess import Msg
@@ -20,9 +21,11 @@ class ScoreAnalyzerResult:
 
 class ScoreAnalyzer(AbstractAnalyzer):
     def close(self):
-        pass
+        if self.hooks is not None and isinstance(self.hooks, list):
+            for h in self.hooks:
+                h.stop()
 
-    def __init__(self, goal_grace_period_sec: float = 1.0, audio: bool = False, webhook: bool = False, *args, **kwargs):
+    def __init__(self, goal_grace_period_sec: float = 1.0, *args, **kwargs):
         super().__init__(name="ScoreAnalyzer")
         self.kwargs = kwargs
         self.goal_grace_period_sec = goal_grace_period_sec
@@ -31,7 +34,14 @@ class ScoreAnalyzer(AbstractAnalyzer):
         self.last_track_sighting: dt.datetime | None = None
         self.last_track: Optional[Track] = None
         self.goal_candidate = None
-        self.hooks = [AudioHook("goal"), Webhook.load_webhook('goal_webhook.yaml')]
+        # TODO: create them somewhere else and pass them down
+        self.hooks = [
+            AudioHook("goal"),
+            Webhook.load_webhook('goal_webhook.yaml'),
+            ZMQHook(host="localhost", port=5555, topic="ws")
+        ]
+        for h in self.hooks:
+            h.start()
 
     @staticmethod
     def is_track_empty(track: Track):

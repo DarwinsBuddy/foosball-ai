@@ -18,6 +18,12 @@ class Webhook(Hook):
         self.json: dict = json
         self.headers: Mapping[str, str] = headers
 
+    def start(self, *args, **kwargs):
+        pass
+
+    def stop(self, *args, **kwargs):
+        pass
+
     def as_dict(self, json: dict = None) -> dict:
         d = vars(self)
         if json is not None:

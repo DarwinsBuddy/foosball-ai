@@ -37,18 +37,14 @@ class ScoreAnalyzer(AbstractAnalyzer):
         self.last_track_sighting: dt.datetime | None = None
         self.last_track: Optional[Track] = None
         self.goal_candidate = None
-        self.goal_hooks = HookManager()
-        self.frame_hooks = HookManager()
-        self.zmq_hook = ZMQHook(host="localhost", port=5555, topic="ws")
-        # TODO: create them somewhere else and pass them down
-        self.goal_hooks.extend([
+        self.goal_hooks = HookManager([
             AudioHook("goal"),
-            Webhook.load_webhook('goal_webhook.yaml'),
-            self.zmq_hook
+            Webhook.load_webhook('goal_webhook.yaml')
         ])
-        self.frame_hooks.extend([
-            self.zmq_hook
+        self.frame_hooks = HookManager([
+            ZMQHook(host="localhost", port=5555, topic="ws")
         ])
+        # TODO: create them somewhere else and pass them down
         self.goal_hooks.start()
         self.frame_hooks.start()
 

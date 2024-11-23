@@ -1,4 +1,5 @@
 import collections
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import Union
@@ -39,9 +40,14 @@ Point = [int, int]
 Rect = (Point, Point, Point, Point)
 BBox = [int, int, int, int]  # x y width height
 
+class JsonSerializable(ABC):
+    @abstractmethod
+    def to_json(self) -> dict | list:
+        pass
+
 
 @dataclass
-class Score:
+class Score(JsonSerializable):
     blue: int = 0
     red: int = 0
 
@@ -58,16 +64,22 @@ class Score:
     def to_string(self):
         return f"{self.blue} : {self.red}"
 
+    def to_json(self) -> dict:
+        return self.__dict__
+
 
 @dataclass
-class FrameDimensions:
+class FrameDimensions(JsonSerializable):
     original: [int, int]
     scaled: [int, int]
     scale: float
 
+    def to_json(self) -> dict:
+        return self.__dict__
+
 
 @dataclass
-class Blob:
+class Blob(JsonSerializable):
     center: Point
     bbox: BBox
 
@@ -75,17 +87,29 @@ class Blob:
         [_, _, w, h] = self.bbox
         return w * h
 
+    def to_json(self) -> dict:
+        return self.__dict__
 
 Goal = Blob
 
 
 @dataclass
-class Goals:
+class Goals(JsonSerializable):
     left: Goal
     right: Goal
 
+    def to_json(self) -> dict:
+        return { "left": self.left.to_json(), "right": self.right.to_json() }
 
-Track = collections.deque
+class Track(collections.deque, JsonSerializable):
+    def to_json(self) -> list:
+        return [x for x in self]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __str__(self):
+        return str([x for x in self])
 
 
 class Verbosity(Enum):

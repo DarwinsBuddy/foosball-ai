@@ -39,7 +39,7 @@ class Tracking:
         self.preprocessor = PreProcessor(dims, goal_detector, mask=mask, headless=headless, useGPU='preprocess' in gpu_flags,
                                          calibrationMode=calibrationMode, **kwargs)
         self.tracker = Tracker(ball_detector, useGPU='tracker' in gpu_flags, calibrationMode=calibrationMode, **kwargs)
-        self.analyzer = Analyzer(goal_grace_period_sec=goalGracePeriod, **kwargs)
+        self.analyzer = Analyzer(dims, goal_grace_period_sec=goalGracePeriod, **kwargs)
         self.renderer = Renderer(dims, headless=headless, useGPU='render' in gpu_flags, **kwargs)
 
         self.stream = stream

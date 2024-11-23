@@ -1,5 +1,6 @@
 import traceback
 
+from ...models import FrameDimensions
 from .ScoreAnalyzer import ScoreAnalyzer
 from ...pipe.BaseProcess import BaseProcess, Msg
 
@@ -8,10 +9,10 @@ class Analyzer(BaseProcess):
     def close(self):
         pass
 
-    def __init__(self, goal_grace_period_sec: float = 1.0, *args, **kwargs):
+    def __init__(self, dims: FrameDimensions, goal_grace_period_sec: float = 1.0, *args, **kwargs):
         super().__init__(name="Analyzer")
         self.kwargs = kwargs
-        self.analyzers = [ScoreAnalyzer(goal_grace_period_sec, args, kwargs)]
+        self.analyzers = [ScoreAnalyzer(dims, goal_grace_period_sec, args, kwargs)]
 
     def reset_score(self):
         for a in self.analyzers:

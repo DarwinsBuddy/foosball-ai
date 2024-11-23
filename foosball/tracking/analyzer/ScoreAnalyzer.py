@@ -5,10 +5,12 @@ from dataclasses import dataclass
 from typing import Optional
 
 from . import AbstractAnalyzer
-from ...hooks.zmq import ZMQHook
+from .models import FrameStats
+from ...hooks import HookManager
+from ...hooks.zmq import ZMQHook, ZMQDispatcher
 from ...hooks.webhook import Webhook
 from ...hooks.audio import AudioHook
-from ...models import Team, Goals, Score, Track, Verbosity, Info
+from ...models import Team, Goals, Score, Track, Verbosity, Info, FrameDimensions
 from ...pipe.BaseProcess import Msg
 from ...utils import contains
 
@@ -21,12 +23,13 @@ class ScoreAnalyzerResult:
 
 class ScoreAnalyzer(AbstractAnalyzer):
     def close(self):
-        if self.hooks is not None and isinstance(self.hooks, list):
-            for h in self.hooks:
-                h.stop()
+        self.goal_hooks.stop()
+        self.frame_hooks.stop()
+        self.zmq_dispatcher.stop()
 
-    def __init__(self, goal_grace_period_sec: float = 1.0, *args, **kwargs):
+    def __init__(self, dims: FrameDimensions, goal_grace_period_sec: float = 1.0, *args, **kwargs):
         super().__init__(name="ScoreAnalyzer")
+        self.dims = dims
         self.kwargs = kwargs
         self.goal_grace_period_sec = goal_grace_period_sec
         self.score = Score()
@@ -34,14 +37,20 @@ class ScoreAnalyzer(AbstractAnalyzer):
         self.last_track_sighting: dt.datetime | None = None
         self.last_track: Optional[Track] = None
         self.goal_candidate = None
+        self.goal_hooks = HookManager()
+        self.frame_hooks = HookManager()
+        self.zmq_hook = ZMQHook(host="localhost", port=5555, topic="ws")
         # TODO: create them somewhere else and pass them down
-        self.hooks = [
+        self.goal_hooks.extend([
             AudioHook("goal"),
             Webhook.load_webhook('goal_webhook.yaml'),
-            ZMQHook(host="localhost", port=5555, topic="ws")
-        ]
-        for h in self.hooks:
-            h.start()
+            self.zmq_hook
+        ])
+        self.frame_hooks.extend([
+            self.zmq_hook
+        ])
+        self.goal_hooks.start()
+        self.frame_hooks.start()
 
     @staticmethod
     def is_track_empty(track: Track):
@@ -66,6 +75,7 @@ class ScoreAnalyzer(AbstractAnalyzer):
     def analyze(self, msg: Msg, timestamp: dt.datetime) -> [ScoreAnalyzerResult, [Info]]:
         goals = msg.data["Tracker"].goals
         track = msg.data["Tracker"].ball_track
+        ball = msg.data["Tracker"].ball
         team_scored = None
         try:
             self.check_reset_score()
@@ -91,6 +101,15 @@ class ScoreAnalyzer(AbstractAnalyzer):
             self.logger.error("Error in analyzer ", e)
             traceback.print_exc()
         self.last_track = track
+        stats = FrameStats(
+            goals=goals,
+            track=track,
+            score=self.score,
+            ball=ball,
+            dims=self.dims,
+            timestamp=timestamp.strftime("%Y-%m-%dT%H:%M:%S")
+        )
+        self.frame_hooks.invoke(stats.to_dict())
         return [
             ScoreAnalyzerResult(score=self.score, team_scored=team_scored),
             [Info(verbosity=Verbosity.INFO, title="Score", value=self.score.to_string())]
@@ -103,14 +122,12 @@ class ScoreAnalyzer(AbstractAnalyzer):
 
     def count_goal(self, team: Team, timestamp: dt.datetime):
         self.score.inc(team)
-        for h in self.hooks:
-            try:
-                h.invoke({"team": team.value}, timestamp)
-            except Exception as e:
-                self.logger.error("Error in Analyzer - effects ")
-                print(e)
-                print(type(h))
-                traceback.print_exc()
+        try:
+            self.goal_hooks.invoke({"team": team.value}, timestamp)
+        except Exception as e:
+            self.logger.error("Error in Analyzer - effects")
+            self.logger.error(e)
+            traceback.print_exc()
 
     def reset(self):
         self.score_reset.set()

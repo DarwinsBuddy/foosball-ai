@@ -38,7 +38,7 @@ class Tracker(BaseProcess):
             clear(self.calibration_out)
             self.calibration_out.close()
 
-    def update_ball_track(self, detected_ball: Blob) -> Track:
+    def update_ball_track(self, detected_ball: Blob) -> Track | None:
         if detected_ball is not None:
             center = detected_ball.center
             # update the points queue (track history)
@@ -47,7 +47,7 @@ class Tracker(BaseProcess):
             self.ball_track.appendleft(None)
         return self.ball_track
 
-    def get_info(self, ball_track: Track) -> [Info]:
+    def get_info(self, ball_track: Track | None) -> [Info]:
         info = [
             Info(verbosity=Verbosity.DEBUG, title="Track length", value=f"{str(sum([1 for p in ball_track or [] if p is not None])).rjust(2, ' ')}"),
             Info(verbosity=Verbosity.TRACE, title="Calibration", value=f"{self.calibrationMode if self.calibrationMode is not None else 'off'}"),
@@ -75,6 +75,7 @@ class Tracker(BaseProcess):
         ball = None
         goals = data.goals
         ball_track = None
+        viewbox = data.viewbox
         tracker_info = []
         try:
             if not self.off:
@@ -105,6 +106,6 @@ class Tracker(BaseProcess):
             traceback.print_exc()
         # Not passing original msg due to performance impact (copying whole frames, etc.)
         if not self.verbose:
-            return Msg(info=tracker_info, data={"Tracker": TrackerResult(frame=data.original, goals=goals, ball_track=ball_track, ball=ball)})
+            return Msg(info=tracker_info, data={"Tracker": TrackerResult(frame=data.original, goals=goals, ball_track=ball_track, ball=ball, viewbox=viewbox)})
         else:
-            return Msg(info=tracker_info, data={"Tracker": TrackerResult(frame=data.preprocessed, goals=goals, ball_track=ball_track, ball=ball)})
+            return Msg(info=tracker_info, data={"Tracker": TrackerResult(frame=data.preprocessed, goals=goals, ball_track=ball_track, ball=ball, viewbox=viewbox)})

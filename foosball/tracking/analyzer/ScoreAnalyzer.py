@@ -72,6 +72,7 @@ class ScoreAnalyzer(AbstractAnalyzer):
         goals = msg.data["Tracker"].goals
         track = msg.data["Tracker"].ball_track
         ball = msg.data["Tracker"].ball
+        viewbox = msg.data["Tracker"].viewbox
         team_scored = None
         try:
             self.check_reset_score()
@@ -103,6 +104,7 @@ class ScoreAnalyzer(AbstractAnalyzer):
             score=self.score,
             ball=ball,
             dims=self.dims,
+            viewbox=viewbox,
             timestamp=timestamp.strftime("%Y-%m-%dT%H:%M:%S")
         )
         self.frame_hooks.invoke(stats.to_dict())

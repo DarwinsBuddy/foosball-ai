@@ -9,3 +9,4 @@ class TrackerResult:
     goals: Goals | None
     ball_track: Track | None
     ball: Blob | None
+    viewbox: list | None

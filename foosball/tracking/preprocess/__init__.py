@@ -68,6 +68,7 @@ class PreProcessor(BaseProcess):
         self.calibration_out = Queue() if self.goals_calibration else None
         self.config_in = Queue() if self.goals_calibration else None
         self.goal_detector = goal_detector
+        self.viewbox = None
 
     def config_input(self, config: GoalColorConfig) -> None:
         if self.goals_calibration:
@@ -119,8 +120,10 @@ class PreProcessor(BaseProcess):
 
                 self.frames_since_last_marker_detection = (self.frames_since_last_marker_detection + 1) % self.redetect_markers_frame_threshold
                 if len(self.markers) == 4:
+
                     # crop and warp
-                    preprocessed, self.homography_matrix = self.four_point_transform(frame, self.markers)
+                    preprocessed, self.homography_matrix, marker_pts = self.four_point_transform(frame, self.markers)
+                    self.viewbox = [pt.tolist() for pt in marker_pts]
                     if trigger_marker_detection:
                         # detect goals anew
                         goals_detection_result = self.goal_detector.detect(preprocessed)
@@ -150,7 +153,7 @@ class PreProcessor(BaseProcess):
             traceback.print_exc()
         # Not passing original msg due to performance impact (copying whole frames, etc.)
         return Msg(info=info, data={
-            "Preprocessor": PreprocessorResult(original=self.iproc(frame), preprocessed=self.iproc(preprocessed), homography_matrix=self.homography_matrix, goals=self.goals)
+            "Preprocessor": PreprocessorResult(original=self.iproc(frame), preprocessed=self.iproc(preprocessed), homography_matrix=self.homography_matrix, goals=self.goals, viewbox=self.viewbox)
         })
 
     @staticmethod
@@ -181,7 +184,7 @@ class PreProcessor(BaseProcess):
         # return the ordered coordinates
         return rect
 
-    def four_point_transform(self, frame: Frame, markers: list[Aruco]) -> tuple[Frame, [int, int]]:
+    def four_point_transform(self, frame: Frame, markers: list[Aruco]) -> tuple[Frame, [int, int], [int, int, int, int]]:
         pts = np.array([self.corners2pt(marker.corners) for marker in markers])
         # obtain a consistent order of the points and unpack them
         # individually
@@ -226,7 +229,7 @@ class PreProcessor(BaseProcess):
         # since we want to draw on the original image (later on), which is still originally not warped,
         # we want to have a function set to project from/onto the warped/un-warped version of the frame
         # for future reference. so we return the warped image and the used homography matrix
-        return warped, homography_matrix
+        return warped, homography_matrix, src_pts
 
 
 def project_point(pt: Point, homography_matrix: np.array, mode: WarpMode):
